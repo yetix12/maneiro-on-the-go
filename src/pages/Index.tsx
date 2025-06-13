@@ -2,13 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Navigation, MapPin, Bus, Route, Clock } from 'lucide-react';
+import { Navigation, MapPin, Bus, Route, Clock, LogOut } from 'lucide-react';
 import MapComponent from '@/components/MapComponent';
 import RouteList from '@/components/RouteList';
 import VehicleTracker from '@/components/VehicleTracker';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
-const Index = () => {
+interface IndexProps {
+  onLogout?: () => void;
+}
+
+const Index: React.FC<IndexProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('map');
   const { location, error, isLoading } = useGeolocation();
 
@@ -21,9 +25,22 @@ const Index = () => {
             <h1 className="text-2xl font-bold">Transporte Maneiro</h1>
             <p className="text-blue-100 text-sm">Nueva Esparta, Venezuela</p>
           </div>
-          <div className="flex items-center space-x-2 bg-white/20 rounded-full px-3 py-1">
-            <Navigation size={16} />
-            <span className="text-sm">En vivo</span>
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 bg-white/20 rounded-full px-3 py-1">
+              <Navigation size={16} />
+              <span className="text-sm">En vivo</span>
+            </div>
+            {onLogout && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onLogout}
+                className="bg-white/20 border-white/30 text-white hover:bg-white/30"
+              >
+                <LogOut size={16} className="mr-1" />
+                Salir
+              </Button>
+            )}
           </div>
         </div>
       </div>

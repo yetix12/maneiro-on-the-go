@@ -61,7 +61,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Index onLogout={handleLogout} />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
