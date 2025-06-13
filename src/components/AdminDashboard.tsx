@@ -5,15 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { LogOut, Plus, Edit, Trash2, Save, MapPin, Image } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LogOut, Plus, Edit, Trash2, Save, MapPin, Image, Users, Map } from 'lucide-react';
 
 interface AdminDashboardProps {
   onLogout: () => void;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState('routes');
-  
   // Estado para rutas
   const [routes, setRoutes] = useState([
     {
@@ -23,8 +22,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       frequency: '15-20 min',
       operatingHours: '5:00 AM - 10:00 PM',
       fare: 'Bs. 2.50',
-      color: '#3B82F6',
-      stops: ['Terminal Pampatar', 'Plaza Bolívar', 'Centro Comercial', 'Terminal Porlamar']
+      color: '#3B82F6'
     },
     {
       id: 'ruta-2',
@@ -33,8 +31,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       frequency: '30-45 min',
       operatingHours: '6:00 AM - 8:00 PM',
       fare: 'Bs. 3.00',
-      color: '#10B981',
-      stops: ['Terminal Pampatar', 'El Tirano', 'Pedro González', 'Manzanillo', 'Playa El Agua']
+      color: '#10B981'
+    }
+  ]);
+
+  // Estado para usuarios
+  const [users, setUsers] = useState([
+    {
+      id: '1',
+      name: 'Pakito',
+      username: 'pakito',
+      type: 'passenger',
+      email: 'pakito@email.com',
+      phone: '+58 424-123-4567'
+    },
+    {
+      id: '2',
+      name: 'Pablo',
+      username: 'pablo',
+      type: 'driver',
+      email: 'pablo@email.com',
+      phone: '+58 416-765-4321',
+      vehicle: 'BUS-001'
     }
   ]);
 
@@ -57,8 +75,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   ]);
 
   const [editingRoute, setEditingRoute] = useState<any>(null);
-  const [editingImage, setEditingImage] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<any>(null);
   const [newImage, setNewImage] = useState({ title: '', description: '', url: '', category: '' });
+  const [newUser, setNewUser] = useState({ 
+    name: '', 
+    username: '', 
+    type: 'passenger', 
+    email: '', 
+    phone: '', 
+    vehicle: '' 
+  });
 
   const handleSaveRoute = (route: any) => {
     setRoutes(routes.map(r => r.id === route.id ? route : r));
@@ -67,6 +93,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const handleDeleteRoute = (id: string) => {
     setRoutes(routes.filter(r => r.id !== id));
+  };
+
+  const handleAddUser = () => {
+    if (newUser.name && newUser.username && newUser.email) {
+      setUsers([...users, { 
+        ...newUser, 
+        id: Date.now().toString() 
+      }]);
+      setNewUser({ name: '', username: '', type: 'passenger', email: '', phone: '', vehicle: '' });
+    }
+  };
+
+  const handleSaveUser = (user: any) => {
+    setUsers(users.map(u => u.id === user.id ? user : u));
+    setEditingUser(null);
+  };
+
+  const handleDeleteUser = (id: string) => {
+    setUsers(users.filter(u => u.id !== id));
   };
 
   const handleAddImage = () => {
@@ -101,196 +146,390 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </div>
 
       <div className="p-6">
-        <div className="flex space-x-4 mb-6">
-          <Button
-            variant={activeTab === 'routes' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('routes')}
-            className="flex items-center gap-2"
-          >
-            <MapPin size={16} />
-            Gestionar Rutas
-          </Button>
-          <Button
-            variant={activeTab === 'images' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('images')}
-            className="flex items-center gap-2"
-          >
-            <Image size={16} />
-            Gestionar Imágenes
-          </Button>
-        </div>
+        <Tabs defaultValue="routes" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="routes" className="flex items-center gap-2">
+              <MapPin size={16} />
+              Rutas
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users size={16} />
+              Usuarios
+            </TabsTrigger>
+            <TabsTrigger value="images" className="flex items-center gap-2">
+              <Image size={16} />
+              Imágenes
+            </TabsTrigger>
+            <TabsTrigger value="map" className="flex items-center gap-2">
+              <Map size={16} />
+              Mapa
+            </TabsTrigger>
+          </TabsList>
 
-        {activeTab === 'routes' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestión de Rutas de Transporte</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {routes.map((route) => (
-                  <Card key={route.id} className="p-4">
-                    {editingRoute?.id === route.id ? (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Nombre de la Ruta</Label>
-                            <Input
-                              value={editingRoute.name}
-                              onChange={(e) => setEditingRoute({...editingRoute, name: e.target.value})}
-                            />
-                          </div>
-                          <div>
-                            <Label>Frecuencia</Label>
-                            <Input
-                              value={editingRoute.frequency}
-                              onChange={(e) => setEditingRoute({...editingRoute, frequency: e.target.value})}
-                            />
-                          </div>
-                          <div>
-                            <Label>Horarios</Label>
-                            <Input
-                              value={editingRoute.operatingHours}
-                              onChange={(e) => setEditingRoute({...editingRoute, operatingHours: e.target.value})}
-                            />
-                          </div>
-                          <div>
-                            <Label>Tarifa</Label>
-                            <Input
-                              value={editingRoute.fare}
-                              onChange={(e) => setEditingRoute({...editingRoute, fare: e.target.value})}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <Label>Descripción</Label>
-                          <Input
-                            value={editingRoute.description}
-                            onChange={(e) => setEditingRoute({...editingRoute, description: e.target.value})}
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <Button onClick={() => handleSaveRoute(editingRoute)}>
-                            <Save size={16} className="mr-1" />
-                            Guardar
-                          </Button>
-                          <Button variant="outline" onClick={() => setEditingRoute(null)}>
-                            Cancelar
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-bold text-lg">{route.name}</h3>
-                          <p className="text-gray-600">{route.description}</p>
-                          <div className="mt-2 text-sm text-gray-500">
-                            <p>Frecuencia: {route.frequency}</p>
-                            <p>Horario: {route.operatingHours}</p>
-                            <p>Tarifa: {route.fare}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={() => setEditingRoute(route)}>
-                            <Edit size={16} />
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleDeleteRoute(route.id)}>
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {activeTab === 'images' && (
-          <div className="space-y-6">
+          <TabsContent value="routes">
             <Card>
               <CardHeader>
-                <CardTitle>Agregar Nueva Imagen</CardTitle>
+                <CardTitle>Gestión de Rutas de Transporte</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <Label>Título</Label>
-                    <Input
-                      value={newImage.title}
-                      onChange={(e) => setNewImage({...newImage, title: e.target.value})}
-                      placeholder="Título de la imagen"
-                    />
+                <div className="space-y-4">
+                  {routes.map((route) => (
+                    <Card key={route.id} className="p-4">
+                      {editingRoute?.id === route.id ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label>Nombre de la Ruta</Label>
+                              <Input
+                                value={editingRoute.name}
+                                onChange={(e) => setEditingRoute({...editingRoute, name: e.target.value})}
+                              />
+                            </div>
+                            <div>
+                              <Label>Frecuencia</Label>
+                              <Input
+                                value={editingRoute.frequency}
+                                onChange={(e) => setEditingRoute({...editingRoute, frequency: e.target.value})}
+                              />
+                            </div>
+                            <div>
+                              <Label>Horarios</Label>
+                              <Input
+                                value={editingRoute.operatingHours}
+                                onChange={(e) => setEditingRoute({...editingRoute, operatingHours: e.target.value})}
+                              />
+                            </div>
+                            <div>
+                              <Label>Tarifa</Label>
+                              <Input
+                                value={editingRoute.fare}
+                                onChange={(e) => setEditingRoute({...editingRoute, fare: e.target.value})}
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <Label>Descripción</Label>
+                            <Input
+                              value={editingRoute.description}
+                              onChange={(e) => setEditingRoute({...editingRoute, description: e.target.value})}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button onClick={() => handleSaveRoute(editingRoute)}>
+                              <Save size={16} className="mr-1" />
+                              Guardar
+                            </Button>
+                            <Button variant="outline" onClick={() => setEditingRoute(null)}>
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-bold text-lg">{route.name}</h3>
+                            <p className="text-gray-600">{route.description}</p>
+                            <div className="mt-2 text-sm text-gray-500">
+                              <p>Frecuencia: {route.frequency}</p>
+                              <p>Horario: {route.operatingHours}</p>
+                              <p>Tarifa: {route.fare}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={() => setEditingRoute(route)}>
+                              <Edit size={16} />
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleDeleteRoute(route.id)}>
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="users">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Agregar Nuevo Usuario</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <Label>Nombre Completo</Label>
+                      <Input
+                        value={newUser.name}
+                        onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                        placeholder="Nombre completo"
+                      />
+                    </div>
+                    <div>
+                      <Label>Usuario</Label>
+                      <Input
+                        value={newUser.username}
+                        onChange={(e) => setNewUser({...newUser, username: e.target.value})}
+                        placeholder="Nombre de usuario"
+                      />
+                    </div>
+                    <div>
+                      <Label>Tipo de Usuario</Label>
+                      <select 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        value={newUser.type}
+                        onChange={(e) => setNewUser({...newUser, type: e.target.value})}
+                      >
+                        <option value="passenger">Pasajero</option>
+                        <option value="driver">Conductor</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label>Email</Label>
+                      <Input
+                        value={newUser.email}
+                        onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                        placeholder="email@ejemplo.com"
+                        type="email"
+                      />
+                    </div>
+                    <div>
+                      <Label>Teléfono</Label>
+                      <Input
+                        value={newUser.phone}
+                        onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
+                        placeholder="+58 424-123-4567"
+                      />
+                    </div>
+                    {newUser.type === 'driver' && (
+                      <div>
+                        <Label>Vehículo Asignado</Label>
+                        <Input
+                          value={newUser.vehicle}
+                          onChange={(e) => setNewUser({...newUser, vehicle: e.target.value})}
+                          placeholder="BUS-001"
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <Label>Categoría</Label>
-                    <Input
-                      value={newImage.category}
-                      onChange={(e) => setNewImage({...newImage, category: e.target.value})}
-                      placeholder="Ej: Terminal, Turismo, etc."
-                    />
+                  <Button onClick={handleAddUser}>
+                    <Plus size={16} className="mr-1" />
+                    Agregar Usuario
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Lista de Usuarios</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Usuario</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Teléfono</TableHead>
+                        <TableHead>Vehículo</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>{user.name}</TableCell>
+                          <TableCell>{user.username}</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              user.type === 'driver' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {user.type === 'driver' ? 'Conductor' : 'Pasajero'}
+                            </span>
+                          </TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>{user.phone}</TableCell>
+                          <TableCell>{user.vehicle || '-'}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button size="sm" variant="outline" onClick={() => setEditingUser(user)}>
+                                <Edit size={14} />
+                              </Button>
+                              <Button size="sm" variant="destructive" onClick={() => handleDeleteUser(user.id)}>
+                                <Trash2 size={14} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="images">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Agregar Nueva Imagen</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <Label>Título</Label>
+                      <Input
+                        value={newImage.title}
+                        onChange={(e) => setNewImage({...newImage, title: e.target.value})}
+                        placeholder="Título de la imagen"
+                      />
+                    </div>
+                    <div>
+                      <Label>Categoría</Label>
+                      <Input
+                        value={newImage.category}
+                        onChange={(e) => setNewImage({...newImage, category: e.target.value})}
+                        placeholder="Ej: Terminal, Turismo, etc."
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>URL de la Imagen</Label>
+                      <Input
+                        value={newImage.url}
+                        onChange={(e) => setNewImage({...newImage, url: e.target.value})}
+                        placeholder="https://ejemplo.com/imagen.jpg"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Descripción</Label>
+                      <Input
+                        value={newImage.description}
+                        onChange={(e) => setNewImage({...newImage, description: e.target.value})}
+                        placeholder="Descripción de la imagen"
+                      />
+                    </div>
                   </div>
-                  <div className="col-span-2">
-                    <Label>URL de la Imagen</Label>
-                    <Input
-                      value={newImage.url}
-                      onChange={(e) => setNewImage({...newImage, url: e.target.value})}
-                      placeholder="https://ejemplo.com/imagen.jpg"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label>Descripción</Label>
-                    <Input
-                      value={newImage.description}
-                      onChange={(e) => setNewImage({...newImage, description: e.target.value})}
-                      placeholder="Descripción de la imagen"
-                    />
+                  <Button onClick={handleAddImage}>
+                    <Plus size={16} className="mr-1" />
+                    Agregar Imagen
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Galería de Imágenes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Imagen</TableHead>
+                        <TableHead>Título</TableHead>
+                        <TableHead>Categoría</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {images.map((image) => (
+                        <TableRow key={image.id}>
+                          <TableCell>
+                            <img src={image.url} alt={image.title} className="w-16 h-16 object-cover rounded" />
+                          </TableCell>
+                          <TableCell>{image.title}</TableCell>
+                          <TableCell>{image.category}</TableCell>
+                          <TableCell>{image.description}</TableCell>
+                          <TableCell>
+                            <Button size="sm" variant="destructive" onClick={() => handleDeleteImage(image.id)}>
+                              <Trash2 size={16} />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="map">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuración del Mapa</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-2">Vista Actual del Mapa</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    El mapa muestra la Isla de Margarita con la zona de Maneiro destacada en rojo.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Zoom Predeterminado</Label>
+                      <Input placeholder="Nivel de zoom (1-20)" />
+                    </div>
+                    <div>
+                      <Label>Centro del Mapa</Label>
+                      <Input placeholder="Coordenadas lat, lng" />
+                    </div>
+                    <div>
+                      <Label>Color de Zona Maneiro</Label>
+                      <Input type="color" defaultValue="#F44336" />
+                    </div>
+                    <div>
+                      <Label>Opacidad de Zona</Label>
+                      <Input placeholder="0.0 - 1.0" defaultValue="0.2" />
+                    </div>
                   </div>
                 </div>
-                <Button onClick={handleAddImage}>
-                  <Plus size={16} className="mr-1" />
-                  Agregar Imagen
+                
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-2">Puntos de Interés</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Administra los lugares importantes mostrados en el mapa.
+                  </p>
+                  <Button variant="outline">
+                    <Plus size={16} className="mr-1" />
+                    Agregar Punto de Interés
+                  </Button>
+                </div>
+                
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-2">Configuración Avanzada</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Opciones avanzadas para personalizar la visualización del mapa.
+                  </p>
+                  <div className="space-y-2">
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" defaultChecked />
+                      <span className="text-sm">Mostrar nombres de ciudades</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" defaultChecked />
+                      <span className="text-sm">Mostrar carreteras principales</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" defaultChecked />
+                      <span className="text-sm">Mostrar playas</span>
+                    </label>
+                  </div>
+                </div>
+                
+                <Button className="w-full">
+                  <Save size={16} className="mr-1" />
+                  Guardar Configuración del Mapa
                 </Button>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Galería de Imágenes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Imagen</TableHead>
-                      <TableHead>Título</TableHead>
-                      <TableHead>Categoría</TableHead>
-                      <TableHead>Descripción</TableHead>
-                      <TableHead>Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {images.map((image) => (
-                      <TableRow key={image.id}>
-                        <TableCell>
-                          <img src={image.url} alt={image.title} className="w-16 h-16 object-cover rounded" />
-                        </TableCell>
-                        <TableCell>{image.title}</TableCell>
-                        <TableCell>{image.category}</TableCell>
-                        <TableCell>{image.description}</TableCell>
-                        <TableCell>
-                          <Button size="sm" variant="destructive" onClick={() => handleDeleteImage(image.id)}>
-                            <Trash2 size={16} />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

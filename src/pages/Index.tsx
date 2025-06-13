@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Navigation, MapPin, Bus, Route, Clock, LogOut, Image } from 'lucide-react';
+import { Navigation, MapPin, Bus, Route, Clock, LogOut, Info } from 'lucide-react';
 import MapComponent from '@/components/MapComponent';
 import RouteList from '@/components/RouteList';
 import VehicleTracker from '@/components/VehicleTracker';
@@ -55,7 +55,7 @@ const Index: React.FC<IndexProps> = ({ onLogout }) => {
         )}
         {activeTab === 'routes' && <RouteList />}
         {activeTab === 'tracker' && <VehicleTracker />}
-        {activeTab === 'gallery' && <ImageGallery />}
+        {activeTab === 'info' && <ImageGallery />}
       </div>
 
       {/* Navigation Tabs */}
@@ -86,12 +86,12 @@ const Index: React.FC<IndexProps> = ({ onLogout }) => {
             <span className="text-xs">Vehículos</span>
           </Button>
           <Button
-            variant={activeTab === 'gallery' ? 'default' : 'ghost'}
+            variant={activeTab === 'info' ? 'default' : 'ghost'}
             className="flex-1 flex flex-col items-center space-y-1 py-3"
-            onClick={() => setActiveTab('gallery')}
+            onClick={() => setActiveTab('info')}
           >
-            <Image size={18} />
-            <span className="text-xs">Galería</span>
+            <Info size={18} />
+            <span className="text-xs">Información</span>
           </Button>
         </div>
       </div>
