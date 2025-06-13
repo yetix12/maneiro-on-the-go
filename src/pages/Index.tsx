@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Navigation, MapPin, Bus, Route, Clock, LogOut } from 'lucide-react';
+import { Navigation, MapPin, Bus, Route, Clock, LogOut, Image } from 'lucide-react';
 import MapComponent from '@/components/MapComponent';
 import RouteList from '@/components/RouteList';
 import VehicleTracker from '@/components/VehicleTracker';
+import ImageGallery from '@/components/ImageGallery';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
 interface IndexProps {
@@ -54,6 +55,7 @@ const Index: React.FC<IndexProps> = ({ onLogout }) => {
         )}
         {activeTab === 'routes' && <RouteList />}
         {activeTab === 'tracker' && <VehicleTracker />}
+        {activeTab === 'gallery' && <ImageGallery />}
       </div>
 
       {/* Navigation Tabs */}
@@ -64,7 +66,7 @@ const Index: React.FC<IndexProps> = ({ onLogout }) => {
             className="flex-1 flex flex-col items-center space-y-1 py-3"
             onClick={() => setActiveTab('map')}
           >
-            <MapPin size={20} />
+            <MapPin size={18} />
             <span className="text-xs">Mapa</span>
           </Button>
           <Button
@@ -72,7 +74,7 @@ const Index: React.FC<IndexProps> = ({ onLogout }) => {
             className="flex-1 flex flex-col items-center space-y-1 py-3"
             onClick={() => setActiveTab('routes')}
           >
-            <Route size={20} />
+            <Route size={18} />
             <span className="text-xs">Rutas</span>
           </Button>
           <Button
@@ -80,8 +82,16 @@ const Index: React.FC<IndexProps> = ({ onLogout }) => {
             className="flex-1 flex flex-col items-center space-y-1 py-3"
             onClick={() => setActiveTab('tracker')}
           >
-            <Bus size={20} />
+            <Bus size={18} />
             <span className="text-xs">Vehículos</span>
+          </Button>
+          <Button
+            variant={activeTab === 'gallery' ? 'default' : 'ghost'}
+            className="flex-1 flex flex-col items-center space-y-1 py-3"
+            onClick={() => setActiveTab('gallery')}
+          >
+            <Image size={18} />
+            <span className="text-xs">Galería</span>
           </Button>
         </div>
       </div>

@@ -4,10 +4,10 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Bus, User, Lock, AlertCircle } from 'lucide-react';
+import { Bus, User, Lock, AlertCircle, Shield } from 'lucide-react';
 
 interface LoginScreenProps {
-  onLogin: (userType: 'passenger' | 'driver', userInfo: any) => void;
+  onLogin: (userType: 'passenger' | 'driver' | 'admin', userInfo: any) => void;
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
@@ -39,6 +39,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           id: 'driver-001',
           name: 'Pablo',
           type: 'driver'
+        });
+      }
+      // Credenciales para administrador
+      else if (username === 'admin' && password === 'admin') {
+        onLogin('admin', {
+          username: 'admin',
+          id: 'admin-001',
+          name: 'Administrador',
+          type: 'admin'
         });
       }
       else {
@@ -111,6 +120,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
         <div className="mt-6 text-xs text-gray-500 space-y-1">
           <p><strong>Pasajero:</strong> pakito / 12345678</p>
           <p><strong>Conductor:</strong> pablo / 12345678</p>
+          <p className="flex items-center gap-1">
+            <Shield size={12} className="text-purple-600" />
+            <strong>Admin:</strong> admin / admin
+          </p>
         </div>
       </Card>
     </div>
