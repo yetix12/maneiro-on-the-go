@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Navigation, MapPin, Bus, Users, Clock, AlertTriangle, LogOut } from 'lucide-react';
+import { Navigation, MapPin, Bus, Clock, AlertTriangle, LogOut, Route } from 'lucide-react';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
 interface DriverDashboardProps {
@@ -14,12 +14,13 @@ interface DriverDashboardProps {
 const DriverDashboard: React.FC<DriverDashboardProps> = ({ driverInfo, onLogout }) => {
   const { location, error, isLoading, getCurrentPosition } = useGeolocation();
   const [isOnline, setIsOnline] = useState(false);
-  const [passengers, setPassengers] = useState(0);
   const [currentRoute, setCurrentRoute] = useState('Pampatar - Porlamar');
+  const [tripStartTime, setTripStartTime] = useState<Date | null>(null);
 
   const handleGoOnline = () => {
     if (location) {
       setIsOnline(true);
+      setTripStartTime(new Date());
       console.log('Conductor en línea en:', location);
     } else {
       getCurrentPosition();
@@ -28,6 +29,17 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ driverInfo, onLogout 
 
   const handleGoOffline = () => {
     setIsOnline(false);
+    setTripStartTime(null);
+  };
+
+  const getTripDuration = () => {
+    if (!tripStartTime) return '00:00:00';
+    const now = new Date();
+    const diff = now.getTime() - tripStartTime.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -41,7 +53,7 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ driverInfo, onLogout 
             </div>
             <div>
               <h1 className="text-xl font-bold">¡Hola, {driverInfo.name}!</h1>
-              <p className="text-blue-100 text-sm">Conductor - ID: {driverInfo.id}</p>
+              <p className="text-blue-100 text-sm">Conductor - Vehículo: {driverInfo.vehicle || 'N/A'}</p>
             </div>
           </div>
           <Button
@@ -71,7 +83,7 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ driverInfo, onLogout 
               <Navigation size={48} className="mx-auto mb-4 text-blue-600" />
               <h3 className="text-lg font-semibold mb-2">¿Listo para comenzar?</h3>
               <p className="text-gray-600 mb-4">
-                Necesitamos acceso a tu ubicación para que los pasajeros puedan seguir tu ruta
+                Activa tu ubicación para comenzar el servicio de transporte
               </p>
               
               {error && (
@@ -98,14 +110,14 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ driverInfo, onLogout 
                   <p className="font-semibold text-sm">Activa</p>
                 </div>
                 <div className="text-center">
-                  <Users size={20} className="mx-auto mb-1 text-blue-600" />
-                  <p className="text-xs text-gray-600">Pasajeros</p>
-                  <p className="font-semibold text-sm">{passengers}/25</p>
+                  <Route size={20} className="mx-auto mb-1 text-blue-600" />
+                  <p className="text-xs text-gray-600">Ruta</p>
+                  <p className="font-semibold text-sm">Activa</p>
                 </div>
                 <div className="text-center">
                   <Clock size={20} className="mx-auto mb-1 text-orange-600" />
                   <p className="text-xs text-gray-600">Tiempo</p>
-                  <p className="font-semibold text-sm">En ruta</p>
+                  <p className="font-semibold text-sm">{getTripDuration()}</p>
                 </div>
               </div>
 
@@ -130,13 +142,13 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ driverInfo, onLogout 
           )}
         </Card>
 
-        {/* Información adicional */}
+        {/* Información del conductor */}
         <Card className="p-4 bg-gradient-to-r from-blue-50 to-green-50 border-2 border-dashed border-blue-200">
           <div className="text-center">
             <Bus size={32} className="mx-auto mb-2 text-blue-600" />
             <h3 className="font-bold mb-1">Sistema GPS Activo</h3>
             <p className="text-sm text-gray-600">
-              Tu ubicación se actualiza cada 30 segundos para que los pasajeros puedan seguir tu ruta
+              Tu ubicación se actualiza automáticamente para el seguimiento del servicio
             </p>
           </div>
         </Card>

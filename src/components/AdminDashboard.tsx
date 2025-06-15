@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, Plus, Edit, Trash2, Save, MapPin, Image, Users, Map } from 'lucide-react';
+import { LogOut, Plus, Edit, Trash2, Save, MapPin, Image, Users, Map, Upload, Camera } from 'lucide-react';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -35,12 +34,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   ]);
 
-  // Estado para usuarios
+  // Estado para usuarios con contraseñas
   const [users, setUsers] = useState([
     {
       id: '1',
       name: 'Pakito',
       username: 'pakito',
+      password: '123456',
       type: 'passenger',
       email: 'pakito@email.com',
       phone: '+58 424-123-4567'
@@ -49,6 +49,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       id: '2',
       name: 'Pablo',
       username: 'pablo',
+      password: '123456',
       type: 'driver',
       email: 'pablo@email.com',
       phone: '+58 416-765-4321',
@@ -74,21 +75,51 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   ]);
 
+  // Estado para puntos de interés
+  const [pointsOfInterest, setPointsOfInterest] = useState([
+    {
+      id: '1',
+      name: 'Hospital Central',
+      description: 'Centro médico principal',
+      lat: 11.0150,
+      lng: -63.8500,
+      category: 'Salud'
+    },
+    {
+      id: '2',
+      name: 'Universidad UPEL',
+      description: 'Instituto universitario',
+      lat: 11.0200,
+      lng: -63.8400,
+      category: 'Educación'
+    }
+  ]);
+
   const [editingRoute, setEditingRoute] = useState<any>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [newImage, setNewImage] = useState({ title: '', description: '', url: '', category: '' });
   const [newUser, setNewUser] = useState({ 
     name: '', 
     username: '', 
+    password: '',
     type: 'passenger', 
     email: '', 
     phone: '', 
     vehicle: '' 
   });
+  const [newPointOfInterest, setNewPointOfInterest] = useState({
+    name: '',
+    description: '',
+    lat: 0,
+    lng: 0,
+    category: ''
+  });
 
   const handleSaveRoute = (route: any) => {
     setRoutes(routes.map(r => r.id === route.id ? route : r));
     setEditingRoute(null);
+    // Simular actualización en tiempo real para todos los usuarios
+    console.log('Ruta actualizada y sincronizada con todos los usuarios:', route);
   };
 
   const handleDeleteRoute = (id: string) => {
@@ -96,22 +127,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   const handleAddUser = () => {
-    if (newUser.name && newUser.username && newUser.email) {
-      setUsers([...users, { 
+    if (newUser.name && newUser.username && newUser.email && newUser.password) {
+      const user = { 
         ...newUser, 
         id: Date.now().toString() 
-      }]);
-      setNewUser({ name: '', username: '', type: 'passenger', email: '', phone: '', vehicle: '' });
+      };
+      setUsers([...users, user]);
+      setNewUser({ name: '', username: '', password: '', type: 'passenger', email: '', phone: '', vehicle: '' });
+      // Guardar usuario en localStorage para persistencia
+      const savedUsers = JSON.parse(localStorage.getItem('app_users') || '[]');
+      savedUsers.push(user);
+      localStorage.setItem('app_users', JSON.stringify(savedUsers));
+      console.log('Usuario guardado y disponible para login:', user);
     }
   };
 
   const handleSaveUser = (user: any) => {
     setUsers(users.map(u => u.id === user.id ? user : u));
     setEditingUser(null);
+    // Actualizar en localStorage
+    const savedUsers = JSON.parse(localStorage.getItem('app_users') || '[]');
+    const updatedUsers = savedUsers.map((u: any) => u.id === user.id ? user : u);
+    localStorage.setItem('app_users', JSON.stringify(updatedUsers));
   };
 
   const handleDeleteUser = (id: string) => {
     setUsers(users.filter(u => u.id !== id));
+    // Eliminar de localStorage
+    const savedUsers = JSON.parse(localStorage.getItem('app_users') || '[]');
+    const filteredUsers = savedUsers.filter((u: any) => u.id !== id);
+    localStorage.setItem('app_users', JSON.stringify(filteredUsers));
   };
 
   const handleAddImage = () => {
@@ -121,8 +166,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setNewImage({
+          ...newImage,
+          url: e.target?.result as string
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleDeleteImage = (id: string) => {
     setImages(images.filter(img => img.id !== id));
+  };
+
+  const handleAddPointOfInterest = () => {
+    if (newPointOfInterest.name && newPointOfInterest.lat && newPointOfInterest.lng) {
+      setPointsOfInterest([...pointsOfInterest, { 
+        ...newPointOfInterest, 
+        id: Date.now().toString() 
+      }]);
+      setNewPointOfInterest({ name: '', description: '', lat: 0, lng: 0, category: '' });
+    }
+  };
+
+  const handleDeletePointOfInterest = (id: string) => {
+    setPointsOfInterest(pointsOfInterest.filter(poi => poi.id !== id));
   };
 
   return (
@@ -217,7 +290,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                           <div className="flex gap-2">
                             <Button onClick={() => handleSaveRoute(editingRoute)}>
                               <Save size={16} className="mr-1" />
-                              Guardar
+                              Guardar Cambios
                             </Button>
                             <Button variant="outline" onClick={() => setEditingRoute(null)}>
                               Cancelar
@@ -277,6 +350,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       />
                     </div>
                     <div>
+                      <Label>Contraseña</Label>
+                      <Input
+                        value={newUser.password}
+                        onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                        placeholder="Contraseña"
+                        type="password"
+                      />
+                    </div>
+                    <div>
                       <Label>Tipo de Usuario</Label>
                       <select 
                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
@@ -305,7 +387,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       />
                     </div>
                     {newUser.type === 'driver' && (
-                      <div>
+                      <div className="col-span-2">
                         <Label>Vehículo Asignado</Label>
                         <Input
                           value={newUser.vehicle}
@@ -342,28 +424,85 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <TableBody>
                       {users.map((user) => (
                         <TableRow key={user.id}>
-                          <TableCell>{user.name}</TableCell>
-                          <TableCell>{user.username}</TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              user.type === 'driver' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                            }`}>
-                              {user.type === 'driver' ? 'Conductor' : 'Pasajero'}
-                            </span>
-                          </TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>{user.phone}</TableCell>
-                          <TableCell>{user.vehicle || '-'}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button size="sm" variant="outline" onClick={() => setEditingUser(user)}>
-                                <Edit size={14} />
-                              </Button>
-                              <Button size="sm" variant="destructive" onClick={() => handleDeleteUser(user.id)}>
-                                <Trash2 size={14} />
-                              </Button>
-                            </div>
-                          </TableCell>
+                          {editingUser?.id === user.id ? (
+                            <>
+                              <TableCell>
+                                <Input
+                                  value={editingUser.name}
+                                  onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={editingUser.username}
+                                  onChange={(e) => setEditingUser({...editingUser, username: e.target.value})}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <select 
+                                  className="w-full px-2 py-1 border rounded"
+                                  value={editingUser.type}
+                                  onChange={(e) => setEditingUser({...editingUser, type: e.target.value})}
+                                >
+                                  <option value="passenger">Pasajero</option>
+                                  <option value="driver">Conductor</option>
+                                </select>
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={editingUser.email}
+                                  onChange={(e) => setEditingUser({...editingUser, email: e.target.value})}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={editingUser.phone}
+                                  onChange={(e) => setEditingUser({...editingUser, phone: e.target.value})}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={editingUser.vehicle || ''}
+                                  onChange={(e) => setEditingUser({...editingUser, vehicle: e.target.value})}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  <Button size="sm" onClick={() => handleSaveUser(editingUser)}>
+                                    <Save size={14} />
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => setEditingUser(null)}>
+                                    Cancelar
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </>
+                          ) : (
+                            <>
+                              <TableCell>{user.name}</TableCell>
+                              <TableCell>{user.username}</TableCell>
+                              <TableCell>
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  user.type === 'driver' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {user.type === 'driver' ? 'Conductor' : 'Pasajero'}
+                                </span>
+                              </TableCell>
+                              <TableCell>{user.email}</TableCell>
+                              <TableCell>{user.phone}</TableCell>
+                              <TableCell>{user.vehicle || '-'}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  <Button size="sm" variant="outline" onClick={() => setEditingUser(user)}>
+                                    <Edit size={14} />
+                                  </Button>
+                                  <Button size="sm" variant="destructive" onClick={() => handleDeleteUser(user.id)}>
+                                    <Trash2 size={14} />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -398,7 +537,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       />
                     </div>
                     <div className="col-span-2">
-                      <Label>URL de la Imagen</Label>
+                      <Label>Subir Imagen desde Dispositivo</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="flex-1"
+                        />
+                        <Button size="sm" variant="outline">
+                          <Upload size={16} className="mr-1" />
+                          Subir
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="col-span-2">
+                      <Label>O URL de la Imagen</Label>
                       <Input
                         value={newImage.url}
                         onChange={(e) => setNewImage({...newImage, url: e.target.value})}
@@ -415,7 +569,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     </div>
                   </div>
                   <Button onClick={handleAddImage}>
-                    <Plus size={16} className="mr-1" />
+                    <Camera size={16} className="mr-1" />
                     Agregar Imagen
                   </Button>
                 </CardContent>
@@ -460,74 +614,99 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </TabsContent>
 
           <TabsContent value="map">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuración del Mapa</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-2">Vista Actual del Mapa</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    El mapa muestra la Isla de Margarita con la zona de Maneiro destacada en rojo.
-                  </p>
-                  <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Agregar Punto de Interés</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <Label>Zoom Predeterminado</Label>
-                      <Input placeholder="Nivel de zoom (1-20)" />
+                      <Label>Nombre</Label>
+                      <Input
+                        value={newPointOfInterest.name}
+                        onChange={(e) => setNewPointOfInterest({...newPointOfInterest, name: e.target.value})}
+                        placeholder="Nombre del lugar"
+                      />
                     </div>
                     <div>
-                      <Label>Centro del Mapa</Label>
-                      <Input placeholder="Coordenadas lat, lng" />
+                      <Label>Categoría</Label>
+                      <Input
+                        value={newPointOfInterest.category}
+                        onChange={(e) => setNewPointOfInterest({...newPointOfInterest, category: e.target.value})}
+                        placeholder="Ej: Salud, Educación, etc."
+                      />
                     </div>
                     <div>
-                      <Label>Color de Zona Maneiro</Label>
-                      <Input type="color" defaultValue="#F44336" />
+                      <Label>Latitud</Label>
+                      <Input
+                        value={newPointOfInterest.lat}
+                        onChange={(e) => setNewPointOfInterest({...newPointOfInterest, lat: parseFloat(e.target.value)})}
+                        placeholder="11.0000"
+                        type="number"
+                        step="0.0001"
+                      />
                     </div>
                     <div>
-                      <Label>Opacidad de Zona</Label>
-                      <Input placeholder="0.0 - 1.0" defaultValue="0.2" />
+                      <Label>Longitud</Label>
+                      <Input
+                        value={newPointOfInterest.lng}
+                        onChange={(e) => setNewPointOfInterest({...newPointOfInterest, lng: parseFloat(e.target.value)})}
+                        placeholder="-63.8500"
+                        type="number"
+                        step="0.0001"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Descripción</Label>
+                      <Input
+                        value={newPointOfInterest.description}
+                        onChange={(e) => setNewPointOfInterest({...newPointOfInterest, description: e.target.value})}
+                        placeholder="Descripción del punto de interés"
+                      />
                     </div>
                   </div>
-                </div>
-                
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-2">Puntos de Interés</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Administra los lugares importantes mostrados en el mapa.
-                  </p>
-                  <Button variant="outline">
+                  <Button onClick={handleAddPointOfInterest}>
                     <Plus size={16} className="mr-1" />
                     Agregar Punto de Interés
                   </Button>
-                </div>
-                
-                <div className="bg-yellow-50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-2">Configuración Avanzada</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Opciones avanzadas para personalizar la visualización del mapa.
-                  </p>
-                  <div className="space-y-2">
-                    <label className="flex items-center space-x-2">
-                      <input type="checkbox" defaultChecked />
-                      <span className="text-sm">Mostrar nombres de ciudades</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input type="checkbox" defaultChecked />
-                      <span className="text-sm">Mostrar carreteras principales</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input type="checkbox" defaultChecked />
-                      <span className="text-sm">Mostrar playas</span>
-                    </label>
-                  </div>
-                </div>
-                
-                <Button className="w-full">
-                  <Save size={16} className="mr-1" />
-                  Guardar Configuración del Mapa
-                </Button>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Puntos de Interés</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Categoría</TableHead>
+                        <TableHead>Coordenadas</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pointsOfInterest.map((poi) => (
+                        <TableRow key={poi.id}>
+                          <TableCell>{poi.name}</TableCell>
+                          <TableCell>{poi.category}</TableCell>
+                          <TableCell>{poi.lat.toFixed(4)}, {poi.lng.toFixed(4)}</TableCell>
+                          <TableCell>{poi.description}</TableCell>
+                          <TableCell>
+                            <Button size="sm" variant="destructive" onClick={() => handleDeletePointOfInterest(poi.id)}>
+                              <Trash2 size={16} />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

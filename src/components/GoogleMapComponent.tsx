@@ -1,4 +1,3 @@
-
 /// <reference types="google.maps" />
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -66,12 +65,13 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
+  const [isMapInitialized, setIsMapInitialized] = useState(false);
 
   const initializeMap = () => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || isMapInitialized) return;
 
     const mapInstance = new google.maps.Map(mapRef.current, {
-      center: { lat: 11.0047, lng: -63.8697 }, // Centro en Pampatar, Maneiro
+      center: { lat: 11.0047, lng: -63.8697 },
       zoom: 13,
       mapTypeId: google.maps.MapTypeId.ROADMAP,
       styles: [
@@ -89,6 +89,7 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
     });
 
     setMap(mapInstance);
+    setIsMapInitialized(true);
 
     // Agregar polígono para destacar la zona de Maneiro
     const maneiroPolygon = new google.maps.Polygon({
@@ -160,7 +161,7 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
       routePath.setMap(mapInstance);
     });
 
-    // Agregar vehículos activos - FIXED: Removed emoji to prevent btoa encoding error
+    // Agregar vehículos activos
     activeVehicles.forEach((vehicle) => {
       const route = busRoutes.find(r => r.id === vehicle.routeId);
       const marker = new google.maps.Marker({
@@ -217,10 +218,10 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
   };
 
   useEffect(() => {
-    if (map) {
+    if (mapRef.current && !isMapInitialized) {
       initializeMap();
     }
-  }, [map, userLocation, selectedRoute]);
+  }, [mapRef.current, isMapInitialized]);
 
   const render = (status: Status) => {
     switch (status) {
@@ -275,7 +276,7 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
                       style={{ backgroundColor: route.color }}
                     />
                     {route.name}
-                  </Button>
+                  </div>
                 ))}
               </div>
             </Card>
@@ -288,7 +289,6 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
     <Wrapper 
       apiKey="AIzaSyDGan9WbWLJW1guKw1T_uInSql4bZrGP9Y" 
       render={render}
-      callback={(map) => setMap(map)}
     />
   );
 };
