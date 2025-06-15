@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Navigation, Map, MapOff, Eye, EyeOff } from 'lucide-react';
+import { Navigation, Map, Eye, EyeOff } from 'lucide-react';
 
 interface MapControlsProps {
   showMap: boolean;
