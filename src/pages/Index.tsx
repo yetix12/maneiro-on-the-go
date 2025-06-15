@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Navigation, MapPin, Bus, Route, Clock, LogOut, Info } from 'lucide-react';
-import MapComponent from '@/components/MapComponent';
+import GoogleMapComponent from '@/components/GoogleMapComponent';
 import RouteList from '@/components/RouteList';
 import VehicleTracker from '@/components/VehicleTracker';
 import ImageGallery from '@/components/ImageGallery';
@@ -50,7 +50,7 @@ const Index: React.FC<IndexProps> = ({ onLogout }) => {
       <div className="flex-1">
         {activeTab === 'map' && (
           <div className="h-screen">
-            <MapComponent userLocation={location} />
+            <GoogleMapComponent userLocation={location} />
           </div>
         )}
         {activeTab === 'routes' && <RouteList />}
