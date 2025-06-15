@@ -1,4 +1,6 @@
 
+/// <reference types="google.maps" />
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Wrapper, Status } from '@googlemaps/react-wrapper';
 import { Card } from '@/components/ui/card';
@@ -158,7 +160,7 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
       routePath.setMap(mapInstance);
     });
 
-    // Agregar vehículos activos
+    // Agregar vehículos activos - FIXED: Removed emoji to prevent btoa encoding error
     activeVehicles.forEach((vehicle) => {
       const route = busRoutes.find(r => r.id === vehicle.routeId);
       const marker = new google.maps.Marker({
@@ -169,7 +171,7 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
           url: 'data:image/svg+xml;base64,' + btoa(`
             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
               <circle cx="15" cy="15" r="12" fill="${route?.color || '#3B82F6'}" stroke="white" stroke-width="2"/>
-              <text x="15" y="19" text-anchor="middle" fill="white" font-size="16">🚌</text>
+              <text x="15" y="19" text-anchor="middle" fill="white" font-size="10" font-weight="bold">BUS</text>
             </svg>
           `),
           scaledSize: new google.maps.Size(30, 30),
