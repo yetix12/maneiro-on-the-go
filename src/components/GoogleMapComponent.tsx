@@ -1,3 +1,4 @@
+
 /// <reference types="google.maps" />
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -276,7 +277,7 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
                       style={{ backgroundColor: route.color }}
                     />
                     {route.name}
-                  </div>
+                  </Button>
                 ))}
               </div>
             </Card>
