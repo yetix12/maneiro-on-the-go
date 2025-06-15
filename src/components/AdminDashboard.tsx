@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, Plus, Edit, Trash2, Save, MapPin, Image, Users, Map, Upload, Camera } from 'lucide-react';
+import { LogOut, Plus, Edit, Trash2, Save, MapPin, Image, Users, Map, Upload, Camera, Eye, EyeOff } from 'lucide-react';
+import { getAdminPointsOfInterest, saveAdminPointsOfInterest } from './map/mapData';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -34,7 +35,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   ]);
 
-  // Estado para usuarios con contraseñas
+  // Estado para usuarios con contraseñas mejorado
   const [users, setUsers] = useState([
     {
       id: '1',
@@ -75,25 +76,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   ]);
 
-  // Estado para puntos de interés
-  const [pointsOfInterest, setPointsOfInterest] = useState([
-    {
-      id: '1',
-      name: 'Hospital Central',
-      description: 'Centro médico principal',
-      lat: 11.0150,
-      lng: -63.8500,
-      category: 'Salud'
-    },
-    {
-      id: '2',
-      name: 'Universidad UPEL',
-      description: 'Instituto universitario',
-      lat: 11.0200,
-      lng: -63.8400,
-      category: 'Educación'
-    }
-  ]);
+  // Estado para puntos de interés mejorado
+  const [pointsOfInterest, setPointsOfInterest] = useState(() => getAdminPointsOfInterest());
 
   const [editingRoute, setEditingRoute] = useState<any>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -114,6 +98,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     lng: 0,
     category: ''
   });
+
+  // Estados para mostrar/ocultar contraseñas
+  const [showPassword, setShowPassword] = useState<{[key: string]: boolean}>({});
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+
+  // Función para validar que solo se ingresen números en contraseña
+  const handlePasswordChange = (value: string, setter: Function) => {
+    const numbersOnly = value.replace(/[^0-9]/g, '');
+    setter(numbersOnly);
+  };
 
   const handleSaveRoute = (route: any) => {
     setRoutes(routes.map(r => r.id === route.id ? route : r));
@@ -186,16 +181,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const handleAddPointOfInterest = () => {
     if (newPointOfInterest.name && newPointOfInterest.lat && newPointOfInterest.lng) {
-      setPointsOfInterest([...pointsOfInterest, { 
+      const newPoint = { 
         ...newPointOfInterest, 
         id: Date.now().toString() 
-      }]);
+      };
+      const updatedPoints = [...pointsOfInterest, newPoint];
+      setPointsOfInterest(updatedPoints);
+      saveAdminPointsOfInterest(updatedPoints);
       setNewPointOfInterest({ name: '', description: '', lat: 0, lng: 0, category: '' });
+      console.log('Punto de interés agregado:', newPoint);
     }
   };
 
   const handleDeletePointOfInterest = (id: string) => {
-    setPointsOfInterest(pointsOfInterest.filter(poi => poi.id !== id));
+    const updatedPoints = pointsOfInterest.filter(poi => poi.id !== id);
+    setPointsOfInterest(updatedPoints);
+    saveAdminPointsOfInterest(updatedPoints);
+  };
+
+  const togglePasswordVisibility = (userId: string) => {
+    setShowPassword(prev => ({
+      ...prev,
+      [userId]: !prev[userId]
+    }));
   };
 
   return (
@@ -350,13 +358,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       />
                     </div>
                     <div>
-                      <Label>Contraseña</Label>
-                      <Input
-                        value={newUser.password}
-                        onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                        placeholder="Contraseña"
-                        type="password"
-                      />
+                      <Label>Contraseña (Solo números)</Label>
+                      <div className="relative">
+                        <Input
+                          value={newUser.password}
+                          onChange={(e) => handlePasswordChange(e.target.value, (value: string) => setNewUser({...newUser, password: value}))}
+                          placeholder="Solo números"
+                          type={showNewPassword ? "text" : "password"}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-auto p-1"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                        >
+                          {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </Button>
+                      </div>
                     </div>
                     <div>
                       <Label>Tipo de Usuario</Label>
@@ -414,6 +435,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <TableRow>
                         <TableHead>Nombre</TableHead>
                         <TableHead>Usuario</TableHead>
+                        <TableHead>Contraseña</TableHead>
                         <TableHead>Tipo</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Teléfono</TableHead>
@@ -437,6 +459,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                                   value={editingUser.username}
                                   onChange={(e) => setEditingUser({...editingUser, username: e.target.value})}
                                 />
+                              </TableCell>
+                              <TableCell>
+                                <div className="relative">
+                                  <Input
+                                    value={editingUser.password}
+                                    onChange={(e) => handlePasswordChange(e.target.value, (value: string) => setEditingUser({...editingUser, password: value}))}
+                                    type={showEditPassword ? "text" : "password"}
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-auto p-1"
+                                    onClick={() => setShowEditPassword(!showEditPassword)}
+                                  >
+                                    {showEditPassword ? <EyeOff size={12} /> : <Eye size={12} />}
+                                  </Button>
+                                </div>
                               </TableCell>
                               <TableCell>
                                 <select 
@@ -481,6 +523,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             <>
                               <TableCell>{user.name}</TableCell>
                               <TableCell>{user.username}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono">
+                                    {showPassword[user.id] ? user.password : '•'.repeat(user.password.length)}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-auto p-1"
+                                    onClick={() => togglePasswordVisibility(user.id)}
+                                  >
+                                    {showPassword[user.id] ? <EyeOff size={12} /> : <Eye size={12} />}
+                                  </Button>
+                                </div>
+                              </TableCell>
                               <TableCell>
                                 <span className={`px-2 py-1 rounded text-xs ${
                                   user.type === 'driver' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
@@ -617,31 +675,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Agregar Punto de Interés</CardTitle>
+                  <CardTitle>Agregar Parada de Autobús</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <Label>Nombre</Label>
+                      <Label>Nombre de la Parada</Label>
                       <Input
                         value={newPointOfInterest.name}
                         onChange={(e) => setNewPointOfInterest({...newPointOfInterest, name: e.target.value})}
-                        placeholder="Nombre del lugar"
+                        placeholder="Ej: Parada Central"
                       />
                     </div>
                     <div>
                       <Label>Categoría</Label>
-                      <Input
+                      <select 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         value={newPointOfInterest.category}
                         onChange={(e) => setNewPointOfInterest({...newPointOfInterest, category: e.target.value})}
-                        placeholder="Ej: Salud, Educación, etc."
-                      />
+                      >
+                        <option value="">Seleccionar categoría</option>
+                        <option value="Parada Principal">Parada Principal</option>
+                        <option value="Parada Secundaria">Parada Secundaria</option>
+                        <option value="Terminal">Terminal</option>
+                        <option value="Punto de Transferencia">Punto de Transferencia</option>
+                      </select>
                     </div>
                     <div>
                       <Label>Latitud</Label>
                       <Input
                         value={newPointOfInterest.lat}
-                        onChange={(e) => setNewPointOfInterest({...newPointOfInterest, lat: parseFloat(e.target.value)})}
+                        onChange={(e) => setNewPointOfInterest({...newPointOfInterest, lat: parseFloat(e.target.value) || 0})}
                         placeholder="11.0000"
                         type="number"
                         step="0.0001"
@@ -651,7 +715,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <Label>Longitud</Label>
                       <Input
                         value={newPointOfInterest.lng}
-                        onChange={(e) => setNewPointOfInterest({...newPointOfInterest, lng: parseFloat(e.target.value)})}
+                        onChange={(e) => setNewPointOfInterest({...newPointOfInterest, lng: parseFloat(e.target.value) || 0})}
                         placeholder="-63.8500"
                         type="number"
                         step="0.0001"
@@ -662,20 +726,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <Input
                         value={newPointOfInterest.description}
                         onChange={(e) => setNewPointOfInterest({...newPointOfInterest, description: e.target.value})}
-                        placeholder="Descripción del punto de interés"
+                        placeholder="Descripción de la parada"
                       />
                     </div>
                   </div>
                   <Button onClick={handleAddPointOfInterest}>
                     <Plus size={16} className="mr-1" />
-                    Agregar Punto de Interés
+                    Agregar Parada
                   </Button>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Puntos de Interés</CardTitle>
+                  <CardTitle>Paradas de Autobús</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -692,7 +756,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       {pointsOfInterest.map((poi) => (
                         <TableRow key={poi.id}>
                           <TableCell>{poi.name}</TableCell>
-                          <TableCell>{poi.category}</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              poi.category === 'Terminal' ? 'bg-blue-100 text-blue-800' :
+                              poi.category === 'Parada Principal' ? 'bg-green-100 text-green-800' :
+                              poi.category === 'Parada Secundaria' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {poi.category}
+                            </span>
+                          </TableCell>
                           <TableCell>{poi.lat.toFixed(4)}, {poi.lng.toFixed(4)}</TableCell>
                           <TableCell>{poi.description}</TableCell>
                           <TableCell>

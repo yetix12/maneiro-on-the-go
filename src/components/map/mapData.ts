@@ -33,10 +33,31 @@ export const activeVehicles = [
   { id: 'bus-3', routeId: 'ruta-2', lat: 11.0241, lng: -63.8376, status: 'En ruta', driver: 'José R.' },
 ];
 
+// Área específica de Maneiro más precisa
 export const maneiroArea = [
-  { lat: 11.0200, lng: -63.8800 },
-  { lat: 11.0200, lng: -63.8500 },
-  { lat: 10.9800, lng: -63.8500 },
-  { lat: 10.9800, lng: -63.8800 },
-  { lat: 11.0200, lng: -63.8800 }
+  { lat: 10.9950, lng: -63.8750 },
+  { lat: 10.9950, lng: -63.8550 },
+  { lat: 11.0150, lng: -63.8550 },
+  { lat: 11.0150, lng: -63.8750 },
+  { lat: 10.9950, lng: -63.8750 }
 ];
+
+// Obtener puntos de interés desde localStorage (agregados por admin)
+export const getAdminPointsOfInterest = () => {
+  try {
+    const savedPoints = localStorage.getItem('admin_points_of_interest');
+    return savedPoints ? JSON.parse(savedPoints) : [];
+  } catch (error) {
+    console.error('Error loading points of interest:', error);
+    return [];
+  }
+};
+
+// Guardar puntos de interés en localStorage
+export const saveAdminPointsOfInterest = (points: any[]) => {
+  try {
+    localStorage.setItem('admin_points_of_interest', JSON.stringify(points));
+  } catch (error) {
+    console.error('Error saving points of interest:', error);
+  }
+};
