@@ -4,7 +4,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Bus, User, Lock, AlertCircle, Shield } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Bus, User, Lock, AlertCircle, UserPlus, Download } from 'lucide-react';
 
 interface LoginScreenProps {
   onLogin: (userType: 'passenger' | 'driver' | 'admin', userInfo: any) => void;
@@ -15,6 +16,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  
+  // Estados para el registro
+  const [registerData, setRegisterData] = useState({
+    name: '',
+    email: '',
+    username: '',
+    password: '',
+    confirmPassword: ''
+  });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +66,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
       }
       setIsLoading(false);
     }, 1000);
+  };
+
+  const handleRegister = () => {
+    if (registerData.password !== registerData.confirmPassword) {
+      setError('Las contraseñas no coinciden');
+      return;
+    }
+    
+    // Aquí se conectaría con Supabase para guardar el usuario
+    console.log('Registrando usuario:', registerData);
+    alert('Registro exitoso! Conecta Supabase para guardar los datos.');
+    setShowRegister(false);
+  };
+
+  const handleDownloadAPK = () => {
+    alert('Para generar APK necesitas conectar Supabase y configurar Capacitor');
   };
 
   return (
@@ -117,13 +144,82 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           </Button>
         </form>
 
-        <div className="mt-6 text-xs text-gray-500 space-y-1">
-          <p><strong>Pasajero:</strong> pakito / 12345678</p>
-          <p><strong>Conductor:</strong> pablo / 12345678</p>
-          <p className="flex items-center gap-1">
-            <Shield size={12} className="text-purple-600" />
-            <strong>Admin:</strong> admin / admin
-          </p>
+        <div className="mt-4 space-y-2">
+          <Dialog open={showRegister} onOpenChange={setShowRegister}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="w-full">
+                <UserPlus size={16} className="mr-2" />
+                Registrarse como Pasajero
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Registro de Pasajero</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Nombre completo</Label>
+                  <Input
+                    id="name"
+                    value={registerData.name}
+                    onChange={(e) => setRegisterData({...registerData, name: e.target.value})}
+                    placeholder="Tu nombre completo"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={registerData.email}
+                    onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
+                    placeholder="tu@email.com"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="reg-username">Usuario</Label>
+                  <Input
+                    id="reg-username"
+                    value={registerData.username}
+                    onChange={(e) => setRegisterData({...registerData, username: e.target.value})}
+                    placeholder="Nombre de usuario"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="reg-password">Contraseña</Label>
+                  <Input
+                    id="reg-password"
+                    type="password"
+                    value={registerData.password}
+                    onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
+                    placeholder="Contraseña"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="confirm-password">Confirmar contraseña</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={registerData.confirmPassword}
+                    onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
+                    placeholder="Confirma tu contraseña"
+                  />
+                </div>
+                <Button onClick={handleRegister} className="w-full">
+                  Registrarse
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={handleDownloadAPK}
+          >
+            <Download size={16} className="mr-2" />
+            Descargar APK
+          </Button>
         </div>
       </Card>
     </div>

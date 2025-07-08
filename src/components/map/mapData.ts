@@ -33,13 +33,16 @@ export const activeVehicles = [
   { id: 'bus-3', routeId: 'ruta-2', lat: 11.0241, lng: -63.8376, status: 'En ruta', driver: 'José R.' },
 ];
 
-// Área específica de Maneiro más precisa
+// Área de Maneiro actualizada para coincidir con la imagen
 export const maneiroArea = [
-  { lat: 10.9950, lng: -63.8750 },
-  { lat: 10.9950, lng: -63.8550 },
-  { lat: 11.0150, lng: -63.8550 },
-  { lat: 11.0150, lng: -63.8750 },
-  { lat: 10.9950, lng: -63.8750 }
+  { lat: 11.0158, lng: -63.8702 }, // Punto noroeste de Pampatar
+  { lat: 11.0158, lng: -63.8580 }, // Punto noreste hacia Playa El Ángel
+  { lat: 11.0089, lng: -63.8550 }, // Punto este cerca de la costa
+  { lat: 11.0025, lng: -63.8580 }, // Punto sureste
+  { lat: 10.9950, lng: -63.8650 }, // Punto sur
+  { lat: 10.9950, lng: -63.8750 }, // Punto suroeste
+  { lat: 11.0089, lng: -63.8750 }, // Punto oeste
+  { lat: 11.0158, lng: -63.8702 }  // Cerrar el polígono
 ];
 
 // Obtener puntos de interés desde localStorage (agregados por admin)
