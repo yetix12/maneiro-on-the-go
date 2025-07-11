@@ -5,18 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Bus, User, Lock, AlertCircle, UserPlus, Download } from 'lucide-react';
+import { Bus, User, Lock, AlertCircle, UserPlus, Download, Mail } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
-interface LoginScreenProps {
-  onLogin: (userType: 'passenger' | 'driver' | 'admin', userInfo: any) => void;
-}
-
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
-  const [username, setUsername] = useState('');
+const LoginScreen: React.FC = () => {
+  const { signIn, signUp, loading } = useAuth();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
   
   // Estados para el registro
   const [registerData, setRegisterData] = useState({
@@ -29,55 +27,49 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSigningIn(true);
     setError('');
 
-    // Simular delay de autenticación
-    setTimeout(() => {
-      // Credenciales para pasajero
-      if (username === 'pakito' && password === '12345678') {
-        onLogin('passenger', {
-          username: 'pakito',
-          id: '12345678',
-          name: 'Pakito',
-          type: 'passenger'
-        });
-      }
-      // Credenciales para conductor
-      else if (username === 'pablo' && password === '12345678') {
-        onLogin('driver', {
-          username: 'pablo',
-          id: 'driver-001',
-          name: 'Pablo',
-          type: 'driver'
-        });
-      }
-      // Credenciales para administrador
-      else if (username === 'admin' && password === 'admin') {
-        onLogin('admin', {
-          username: 'admin',
-          id: 'admin-001',
-          name: 'Administrador',
-          type: 'admin'
-        });
-      }
-      else {
-        setError('Usuario o contraseña incorrectos');
-      }
-      setIsLoading(false);
-    }, 1000);
+    const { error } = await signIn(email, password);
+    
+    if (error) {
+      setError('Usuario o contraseña incorrectos');
+    }
+    
+    setIsSigningIn(false);
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
+    setError('');
+    
     if (registerData.password !== registerData.confirmPassword) {
       setError('Las contraseñas no coinciden');
       return;
     }
+
+    if (!registerData.email || !registerData.password || !registerData.name || !registerData.username) {
+      setError('Todos los campos son obligatorios');
+      return;
+    }
+
+    const { error } = await signUp(registerData.email, registerData.password, {
+      username: registerData.username,
+      full_name: registerData.name,
+      user_type: 'passenger'
+    });
     
-    // Aquí se conectaría con Supabase para guardar el usuario
-    console.log('Registrando usuario:', registerData);
-    alert('Registro exitoso! Conecta Supabase para guardar los datos.');
-    setShowRegister(false);
+    if (error) {
+      setError(error.message || 'Error al registrarse');
+    } else {
+      setShowRegister(false);
+      setRegisterData({
+        name: '',
+        email: '',
+        username: '',
+        password: '',
+        confirmPassword: ''
+      });
+    }
   };
 
   const handleDownloadAPK = () => {
@@ -97,18 +89,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="username" className="flex items-center gap-2">
-              <User size={16} />
-              Usuario
+            <Label htmlFor="email" className="flex items-center gap-2">
+              <Mail size={16} />
+              Email
             </Label>
             <Input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Ingresa tu usuario"
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="tu@email.com"
               required
-              disabled={isLoading}
+              disabled={loading || isSigningIn}
             />
           </div>
 
@@ -124,7 +116,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Ingresa tu contraseña"
               required
-              disabled={isLoading}
+              disabled={loading || isSigningIn}
             />
           </div>
 
@@ -138,16 +130,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           <Button
             type="submit"
             className="w-full caribbean-gradient"
-            disabled={isLoading}
+            disabled={loading || isSigningIn}
           >
-            {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+            {isSigningIn ? 'Iniciando sesión...' : 'Iniciar Sesión'}
           </Button>
         </form>
 
         <div className="mt-4 space-y-2">
           <Dialog open={showRegister} onOpenChange={setShowRegister}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" disabled={loading}>
                 <UserPlus size={16} className="mr-2" />
                 Registrarse como Pasajero
               </Button>
@@ -164,16 +156,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     value={registerData.name}
                     onChange={(e) => setRegisterData({...registerData, name: e.target.value})}
                     placeholder="Tu nombre completo"
+                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="reg-email">Email</Label>
                   <Input
-                    id="email"
+                    id="reg-email"
                     type="email"
                     value={registerData.email}
                     onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
                     placeholder="tu@email.com"
+                    required
                   />
                 </div>
                 <div>
@@ -183,6 +177,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     value={registerData.username}
                     onChange={(e) => setRegisterData({...registerData, username: e.target.value})}
                     placeholder="Nombre de usuario"
+                    required
                   />
                 </div>
                 <div>
@@ -193,6 +188,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     value={registerData.password}
                     onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
                     placeholder="Contraseña"
+                    required
                   />
                 </div>
                 <div>
@@ -203,10 +199,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     value={registerData.confirmPassword}
                     onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
                     placeholder="Confirma tu contraseña"
+                    required
                   />
                 </div>
-                <Button onClick={handleRegister} className="w-full">
-                  Registrarse
+                {error && (
+                  <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                    <AlertCircle size={16} />
+                    {error}
+                  </div>
+                )}
+                <Button onClick={handleRegister} className="w-full" disabled={loading}>
+                  {loading ? 'Registrando...' : 'Registrarse'}
                 </Button>
               </div>
             </DialogContent>
@@ -216,10 +219,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             variant="outline" 
             className="w-full"
             onClick={handleDownloadAPK}
+            disabled={loading}
           >
             <Download size={16} className="mr-2" />
             Descargar APK
           </Button>
+        </div>
+
+        <div className="mt-4 text-center text-sm text-gray-600">
+          <p>Usuarios de prueba:</p>
+          <p className="text-xs">Admin: admin@test.com / admin123</p>
+          <p className="text-xs">Conductor: driver@test.com / driver123</p>
         </div>
       </Card>
     </div>

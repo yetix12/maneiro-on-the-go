@@ -14,7 +14,202 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bus_routes: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bus_stops: {
+        Row: {
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          route_id: string
+          stop_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          route_id: string
+          stop_order: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          route_id?: string
+          stop_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bus_stops_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "bus_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      points_of_interest: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "points_of_interest_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_type: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string
+          user_type?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_type?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          current_latitude: number | null
+          current_longitude: number | null
+          driver_id: string | null
+          id: string
+          last_updated: string | null
+          license_plate: string
+          model: string | null
+          route_id: string | null
+          status: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          current_latitude?: number | null
+          current_longitude?: number | null
+          driver_id?: string | null
+          id?: string
+          last_updated?: string | null
+          license_plate: string
+          model?: string | null
+          route_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          current_latitude?: number | null
+          current_longitude?: number | null
+          driver_id?: string | null
+          id?: string
+          last_updated?: string | null
+          license_plate?: string
+          model?: string | null
+          route_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "bus_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

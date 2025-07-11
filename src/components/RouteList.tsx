@@ -1,63 +1,106 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, Bus } from 'lucide-react';
+import { Clock, MapPin, Bus, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
 
-const routes = [
-  {
-    id: 'ruta-1',
-    name: 'Pampatar - Porlamar',
-    description: 'Conecta el centro histórico con la zona comercial',
-    frequency: '15-20 min',
-    operatingHours: '5:00 AM - 10:00 PM',
-    fare: 'Bs. 2.50',
-    color: '#3B82F6',
-    stops: [
-      'Terminal Pampatar',
-      'Plaza Mayor',
-      'Centro de Salud',
-      'Plaza Bolívar',
-      'Mercado Municipal',
-      'Centro Comercial Sambil',
-      'Terminal Porlamar'
-    ]
-  },
-  {
-    id: 'ruta-2',
-    name: 'Pampatar - Playa El Agua',
-    description: 'Ruta turística hacia las mejores playas',
-    frequency: '30-45 min',
-    operatingHours: '6:00 AM - 8:00 PM',
-    fare: 'Bs. 3.00',
-    color: '#10B981',
-    stops: [
-      'Terminal Pampatar',
-      'El Tirano',
-      'Pedro González',
-      'Manzanillo',
-      'Playa El Agua'
-    ]
-  },
-  {
-    id: 'ruta-3',
-    name: 'Circuito Urbano',
-    description: 'Recorrido por la zona urbana de Pampatar',
-    frequency: '10-15 min',
-    operatingHours: '5:30 AM - 11:00 PM',
-    fare: 'Bs. 2.00',
-    color: '#F59E0B',
-    stops: [
-      'Terminal Pampatar',
-      'Hospital Central',
-      'Universidad',
-      'Plaza de Armas',
-      'Terminal Pampatar'
-    ]
-  }
-];
+type Route = Tables<'bus_routes'>;
+type Stop = Tables<'bus_stops'>;
+
+interface RouteWithStops extends Route {
+  stops: Stop[];
+}
 
 const RouteList = () => {
+  const [routes, setRoutes] = useState<RouteWithStops[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRoutes = async () => {
+      try {
+        // Fetch routes
+        const { data: routesData, error: routesError } = await supabase
+          .from('bus_routes')
+          .select('*')
+          .eq('is_active', true)
+          .order('name');
+
+        if (routesError) throw routesError;
+
+        // Fetch stops for each route
+        const routesWithStops: RouteWithStops[] = [];
+        
+        for (const route of routesData || []) {
+          const { data: stopsData, error: stopsError } = await supabase
+            .from('bus_stops')
+            .select('*')
+            .eq('route_id', route.id)
+            .order('stop_order');
+
+          if (stopsError) {
+            console.error('Error fetching stops:', stopsError);
+          }
+
+          routesWithStops.push({
+            ...route,
+            stops: stopsData || []
+          });
+        }
+
+        setRoutes(routesWithStops);
+      } catch (err) {
+        console.error('Error fetching routes:', err);
+        setError('Error al cargar las rutas');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRoutes();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="p-4 pb-20 space-y-4">
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Rutas de Transporte</h2>
+          <p className="text-gray-600">Cargando rutas...</p>
+        </div>
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 pb-20 space-y-4">
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Rutas de Transporte</h2>
+          <div className="flex items-center justify-center gap-2 text-red-600 mt-4">
+            <AlertCircle size={20} />
+            <p>{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (routes.length === 0) {
+    return (
+      <div className="p-4 pb-20 space-y-4">
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Rutas de Transporte</h2>
+          <p className="text-gray-600">No hay rutas disponibles</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 pb-20 space-y-4">
       <div className="text-center mb-6">
@@ -75,7 +118,9 @@ const RouteList = () => {
               />
               <div>
                 <h3 className="font-bold text-lg">{route.name}</h3>
-                <p className="text-gray-600 text-sm">{route.description}</p>
+                {route.description && (
+                  <p className="text-gray-600 text-sm">{route.description}</p>
+                )}
               </div>
             </div>
             <Badge variant="secondary" className="bg-green-100 text-green-800">
@@ -88,30 +133,32 @@ const RouteList = () => {
             <div className="text-center">
               <Clock size={16} className="mx-auto mb-1 text-blue-600" />
               <p className="text-xs text-gray-600">Frecuencia</p>
-              <p className="font-semibold text-sm">{route.frequency}</p>
+              <p className="font-semibold text-sm">15-20 min</p>
             </div>
             <div className="text-center">
               <MapPin size={16} className="mx-auto mb-1 text-green-600" />
               <p className="text-xs text-gray-600">Tarifa</p>
-              <p className="font-semibold text-sm">{route.fare}</p>
+              <p className="font-semibold text-sm">Bs. 2.50</p>
             </div>
             <div className="text-center">
               <div className="w-4 h-4 mx-auto mb-1 bg-yellow-500 rounded-full" />
               <p className="text-xs text-gray-600">Horario</p>
-              <p className="font-semibold text-xs">{route.operatingHours}</p>
+              <p className="font-semibold text-xs">5:00 AM - 10:00 PM</p>
             </div>
           </div>
 
-          <div>
-            <h4 className="font-semibold mb-2 text-sm">Paradas principales:</h4>
-            <div className="flex flex-wrap gap-2">
-              {route.stops.map((stop, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {stop}
-                </Badge>
-              ))}
+          {route.stops && route.stops.length > 0 && (
+            <div>
+              <h4 className="font-semibold mb-2 text-sm">Paradas principales:</h4>
+              <div className="flex flex-wrap gap-2">
+                {route.stops.map((stop) => (
+                  <Badge key={stop.id} variant="outline" className="text-xs">
+                    {stop.name}
+                  </Badge>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </Card>
       ))}
 
