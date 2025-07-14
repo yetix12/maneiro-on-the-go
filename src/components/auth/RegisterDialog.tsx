@@ -24,36 +24,68 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
     confirmPassword: ''
   });
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleRegister = async () => {
     setError('');
     
-    if (registerData.password !== registerData.confirmPassword) {
-      setError('Las contraseñas no coinciden');
-      return;
-    }
-
+    // Validar que todos los campos estén llenos
     if (!registerData.email || !registerData.password || !registerData.name || !registerData.username) {
       setError('Todos los campos son obligatorios');
       return;
     }
 
-    const { error } = await signUp(registerData.email, registerData.password, {
-      username: registerData.username,
-      full_name: registerData.name,
-      user_type: 'passenger'
-    });
-    
-    if (error) {
-      setError(error.message || 'Error al registrarse');
-    } else {
-      setShowRegister(false);
-      setRegisterData({
-        name: '',
-        email: '',
-        username: '',
-        password: '',
-        confirmPassword: ''
+    // Validar formato de email
+    if (!validateEmail(registerData.email)) {
+      setError('Por favor ingresa un email válido');
+      return;
+    }
+
+    // Validar longitud de contraseña
+    if (registerData.password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (registerData.password !== registerData.confirmPassword) {
+      setError('Las contraseñas no coinciden');
+      return;
+    }
+
+    try {
+      const { error } = await signUp(registerData.email.trim().toLowerCase(), registerData.password, {
+        username: registerData.username.trim(),
+        full_name: registerData.name.trim(),
+        user_type: 'passenger'
       });
+      
+      if (error) {
+        // Manejar errores específicos de Supabase
+        if (error.message.includes('Email address') && error.message.includes('invalid')) {
+          setError('El formato del email no es válido. Por favor verifica e intenta nuevamente.');
+        } else if (error.message.includes('User already registered')) {
+          setError('Este email ya está registrado. Intenta iniciar sesión.');
+        } else if (error.message.includes('Password should be at least')) {
+          setError('La contraseña debe tener al menos 6 caracteres');
+        } else {
+          setError(error.message || 'Error al registrarse. Por favor intenta nuevamente.');
+        }
+      } else {
+        setShowRegister(false);
+        setRegisterData({
+          name: '',
+          email: '',
+          username: '',
+          password: '',
+          confirmPassword: ''
+        });
+      }
+    } catch (err) {
+      console.error('Registration error:', err);
+      setError('Error inesperado al registrarse. Por favor intenta nuevamente.');
     }
   };
 

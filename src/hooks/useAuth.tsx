@@ -71,30 +71,74 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    const { error } = await authService.signIn(email, password);
     
-    if (error) {
-      console.error('Sign in error:', error);
-      toast.error(error.message || 'Error al iniciar sesión');
-    } else {
-      toast.success('¡Sesión iniciada correctamente!');
+    try {
+      const { error } = await authService.signIn(email, password);
+      
+      if (error) {
+        console.error('Sign in error:', error);
+        
+        // Manejar errores específicos de inicio de sesión
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error('Email o contraseña incorrectos');
+        } else if (error.message.includes('Email not confirmed')) {
+          toast.error('Por favor confirma tu email antes de iniciar sesión');
+        } else if (error.message.includes('Too many requests')) {
+          toast.error('Demasiados intentos. Espera un momento e intenta nuevamente');
+        } else {
+          toast.error(error.message || 'Error al iniciar sesión');
+        }
+        
+        // Mantener en la pantalla de login en caso de error
+        setUser(null);
+        setSession(null);
+      } else {
+        toast.success('¡Sesión iniciada correctamente!');
+      }
+      
+      return { error };
+    } catch (err) {
+      console.error('Unexpected sign in error:', err);
+      toast.error('Error inesperado al iniciar sesión');
+      setUser(null);
+      setSession(null);
+      return { error: err };
+    } finally {
+      setLoading(false);
     }
-    
-    return { error };
   };
 
   const signUp = async (email: string, password: string, userData: { username: string; full_name: string; user_type?: string }) => {
     setLoading(true);
-    const { error } = await authService.signUp(email, password, userData);
     
-    if (error) {
-      console.error('Sign up error:', error);
-      toast.error(error.message || 'Error al registrarse');
-    } else {
-      toast.success('¡Registro exitoso! Revisa tu email para confirmar tu cuenta.');
+    try {
+      const { error } = await authService.signUp(email, password, userData);
+      
+      if (error) {
+        console.error('Sign up error:', error);
+        
+        // Manejar errores específicos de registro
+        if (error.message.includes('Email address') && error.message.includes('invalid')) {
+          toast.error('El formato del email no es válido');
+        } else if (error.message.includes('User already registered')) {
+          toast.error('Este email ya está registrado');
+        } else if (error.message.includes('Password should be at least')) {
+          toast.error('La contraseña debe tener al menos 6 caracteres');
+        } else {
+          toast.error(error.message || 'Error al registrarse');
+        }
+      } else {
+        toast.success('¡Registro exitoso! Revisa tu email para confirmar tu cuenta.');
+      }
+      
+      return { error };
+    } catch (err) {
+      console.error('Unexpected sign up error:', err);
+      toast.error('Error inesperado al registrarse');
+      return { error: err };
+    } finally {
+      setLoading(false);
     }
-    
-    return { error };
   };
 
   const signOut = async () => {
