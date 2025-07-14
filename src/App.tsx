@@ -14,7 +14,7 @@ import { AuthProvider, useAuth } from "./hooks/useAuth";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
 
   // Mostrar loading mientras se verifica la autenticación
   if (loading) {
@@ -35,19 +35,19 @@ const AppContent = () => {
 
   // Si es administrador, mostrar dashboard del administrador
   if (user.type === 'admin') {
-    return <AdminDashboard onLogout={() => {}} />;
+    return <AdminDashboard onLogout={signOut} />;
   }
 
   // Si es conductor, mostrar dashboard del conductor
   if (user.type === 'driver') {
-    return <DriverDashboard driverInfo={user} onLogout={() => {}} />;
+    return <DriverDashboard driverInfo={user} onLogout={signOut} />;
   }
 
   // Si es pasajero, mostrar la aplicación normal
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Index onLogout={() => {}} />} />
+        <Route path="/" element={<Index onLogout={signOut} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
