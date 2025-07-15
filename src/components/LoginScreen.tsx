@@ -5,7 +5,6 @@ import LoginForm from '@/components/auth/LoginForm';
 import RegisterDialog from '@/components/auth/RegisterDialog';
 import APKInstructionsDialog from '@/components/auth/APKInstructionsDialog';
 import AppHeader from '@/components/auth/AppHeader';
-import TestUserInfo from '@/components/auth/TestUserInfo';
 import { useAuth } from '@/hooks/useAuth';
 
 const LoginScreen: React.FC = () => {
@@ -22,8 +21,6 @@ const LoginScreen: React.FC = () => {
           <RegisterDialog disabled={loading} />
           <APKInstructionsDialog disabled={loading} />
         </div>
-
-        <TestUserInfo />
       </Card>
     </div>
   );
