@@ -25,8 +25,9 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
   });
 
   const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    // Validación más estricta de email
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(email.trim());
   };
 
   const handleRegister = async () => {
@@ -38,9 +39,10 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
       return;
     }
 
-    // Validar formato de email
-    if (!validateEmail(registerData.email)) {
-      setError('Por favor ingresa un email válido');
+    // Limpiar y validar email
+    const emailTrimmed = registerData.email.trim().toLowerCase();
+    if (!validateEmail(emailTrimmed)) {
+      setError('Por favor ingresa un email válido (ejemplo: usuario@correo.com)');
       return;
     }
 
@@ -56,20 +58,24 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
     }
 
     try {
-      const { error } = await signUp(registerData.email.trim().toLowerCase(), registerData.password, {
+      const { error } = await signUp(emailTrimmed, registerData.password, {
         username: registerData.username.trim(),
         full_name: registerData.name.trim(),
         user_type: 'passenger'
       });
       
       if (error) {
+        console.error('Registration error details:', error);
+        
         // Manejar errores específicos de Supabase
-        if (error.message.includes('Email address') && error.message.includes('invalid')) {
-          setError('El formato del email no es válido. Por favor verifica e intenta nuevamente.');
-        } else if (error.message.includes('User already registered')) {
+        if (error.message.includes('email_address_invalid') || error.message.includes('Email address') && error.message.includes('invalid')) {
+          setError('El formato del email no es válido. Verifica que sea un correo electrónico real (ej: usuario@gmail.com)');
+        } else if (error.message.includes('User already registered') || error.message.includes('already registered')) {
           setError('Este email ya está registrado. Intenta iniciar sesión.');
         } else if (error.message.includes('Password should be at least')) {
           setError('La contraseña debe tener al menos 6 caracteres');
+        } else if (error.message.includes('signup_disabled')) {
+          setError('El registro está temporalmente deshabilitado. Intenta más tarde.');
         } else {
           setError(error.message || 'Error al registrarse. Por favor intenta nuevamente.');
         }
@@ -131,9 +137,9 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
             <Input
               id="reg-email"
               type="email"
-              value={registerData.email}
+              value={registerData.email} 
               onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
-              placeholder="tu@email.com"
+              placeholder="usuario@ejemplo.com"
               required
             />
           </div>
@@ -154,7 +160,7 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
               type="password"
               value={registerData.password}
               onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
-              placeholder="Contraseña"
+              placeholder="Mínimo 6 caracteres"
               required
             />
           </div>

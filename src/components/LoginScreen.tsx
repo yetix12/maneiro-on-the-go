@@ -3,7 +3,6 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterDialog from '@/components/auth/RegisterDialog';
-import APKInstructionsDialog from '@/components/auth/APKInstructionsDialog';
 import AppHeader from '@/components/auth/AppHeader';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -17,9 +16,8 @@ const LoginScreen: React.FC = () => {
         
         <LoginForm />
 
-        <div className="mt-4 space-y-2">
+        <div className="mt-4">
           <RegisterDialog disabled={loading} />
-          <APKInstructionsDialog disabled={loading} />
         </div>
       </Card>
     </div>
