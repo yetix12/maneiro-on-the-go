@@ -25,9 +25,17 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
   });
 
   const validateEmail = (email: string) => {
-    // Validación más estricta de email
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    return emailRegex.test(email.trim());
+    // Validación más permisiva para emails como pakito@email.com
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const trimmedEmail = email.trim().toLowerCase();
+    
+    // Verificaciones básicas
+    if (!trimmedEmail || trimmedEmail.length < 5) return false;
+    if (!emailRegex.test(trimmedEmail)) return false;
+    if (trimmedEmail.indexOf('@') === -1) return false;
+    if (trimmedEmail.lastIndexOf('.') < trimmedEmail.indexOf('@')) return false;
+    
+    return true;
   };
 
   const handleRegister = async () => {
