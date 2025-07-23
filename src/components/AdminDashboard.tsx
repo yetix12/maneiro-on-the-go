@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,12 +7,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LogOut, Plus, Edit, Trash2, Save, MapPin, Image, Users, Map, Upload, Camera, Eye, EyeOff } from 'lucide-react';
 import { getAdminPointsOfInterest, saveAdminPointsOfInterest } from './map/mapData';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 
 interface AdminDashboardProps {
   onLogout: () => void;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
+  const { toast } = useToast();
+  
   // Estado para rutas
   const [routes, setRoutes] = useState([
     {
@@ -35,28 +39,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   ]);
 
-  // Estado para usuarios con contraseñas mejorado
-  const [users, setUsers] = useState([
-    {
-      id: '1',
-      name: 'Pakito',
-      username: 'pakito',
-      password: '123456',
-      type: 'passenger',
-      email: 'pakito@email.com',
-      phone: '+58 424-123-4567'
-    },
-    {
-      id: '2',
-      name: 'Pablo',
-      username: 'pablo',
-      password: '123456',
-      type: 'driver',
-      email: 'pablo@email.com',
-      phone: '+58 416-765-4321',
-      vehicle: 'BUS-001'
-    }
-  ]);
+  // Estado para usuarios
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // Estado para imágenes
   const [images, setImages] = useState([
@@ -76,7 +61,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   ]);
 
-  // Estado para puntos de interés mejorado
+  // Estado para puntos de interés
   const [pointsOfInterest, setPointsOfInterest] = useState(() => getAdminPointsOfInterest());
 
   const [editingRoute, setEditingRoute] = useState<any>(null);
@@ -85,9 +70,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [newUser, setNewUser] = useState({ 
     name: '', 
     username: '', 
+    email: '',
     password: '',
     type: 'passenger', 
-    email: '', 
     phone: '', 
     vehicle: '' 
   });
@@ -104,6 +89,45 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
 
+  // Cargar usuarios desde Supabase
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*');
+
+      if (error) throw error;
+
+      // Formatear los datos para mostrar en la tabla
+      const formattedUsers = profiles.map(profile => ({
+        id: profile.id,
+        name: profile.full_name || profile.username || 'Sin nombre',
+        username: profile.username || 'Sin username',
+        email: 'N/A', // No tenemos acceso al email desde profiles
+        password: '******', // Por seguridad no mostramos la contraseña real
+        type: profile.user_type || 'passenger',
+        phone: profile.phone || 'N/A',
+        vehicle: profile.user_type === 'driver' ? 'N/A' : ''
+      }));
+
+      setUsers(formattedUsers);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los usuarios",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Función para validar que solo se ingresen números en contraseña
   const handlePasswordChange = (value: string, setter: Function) => {
     const numbersOnly = value.replace(/[^0-9]/g, '');
@@ -113,7 +137,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const handleSaveRoute = (route: any) => {
     setRoutes(routes.map(r => r.id === route.id ? route : r));
     setEditingRoute(null);
-    // Simular actualización en tiempo real para todos los usuarios
     console.log('Ruta actualizada y sincronizada con todos los usuarios:', route);
   };
 
@@ -121,37 +144,145 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     setRoutes(routes.filter(r => r.id !== id));
   };
 
-  const handleAddUser = () => {
-    if (newUser.name && newUser.username && newUser.email && newUser.password) {
-      const user = { 
-        ...newUser, 
-        id: Date.now().toString() 
-      };
-      setUsers([...users, user]);
-      setNewUser({ name: '', username: '', password: '', type: 'passenger', email: '', phone: '', vehicle: '' });
-      // Guardar usuario en localStorage para persistencia
-      const savedUsers = JSON.parse(localStorage.getItem('app_users') || '[]');
-      savedUsers.push(user);
-      localStorage.setItem('app_users', JSON.stringify(savedUsers));
-      console.log('Usuario guardado y disponible para login:', user);
+  const handleAddUser = async () => {
+    if (!newUser.name || !newUser.username || !newUser.email || !newUser.password) {
+      toast({
+        title: "Error",
+        description: "Por favor complete todos los campos obligatorios",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Crear usuario en Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newUser.email,
+        password: newUser.password,
+        options: {
+          data: {
+            username: newUser.username,
+            full_name: newUser.name,
+            user_type: newUser.type
+          },
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Actualizar o insertar el perfil del usuario
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: authData.user.id,
+            username: newUser.username,
+            full_name: newUser.name,
+            user_type: newUser.type,
+            phone: newUser.phone || null
+          });
+
+        if (profileError) throw profileError;
+
+        toast({
+          title: "Éxito",
+          description: "Usuario creado exitosamente",
+          variant: "default"
+        });
+
+        // Limpiar formulario
+        setNewUser({ 
+          name: '', 
+          username: '', 
+          email: '',
+          password: '',
+          type: 'passenger', 
+          phone: '', 
+          vehicle: '' 
+        });
+
+        // Recargar lista de usuarios
+        await loadUsers();
+      }
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el usuario",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSaveUser = (user: any) => {
-    setUsers(users.map(u => u.id === user.id ? user : u));
-    setEditingUser(null);
-    // Actualizar en localStorage
-    const savedUsers = JSON.parse(localStorage.getItem('app_users') || '[]');
-    const updatedUsers = savedUsers.map((u: any) => u.id === user.id ? user : u);
-    localStorage.setItem('app_users', JSON.stringify(updatedUsers));
+  const handleSaveUser = async (user: any) => {
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          username: user.username,
+          full_name: user.name,
+          user_type: user.type,
+          phone: user.phone || null
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Usuario actualizado exitosamente",
+        variant: "default"
+      });
+
+      setEditingUser(null);
+      await loadUsers();
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el usuario",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteUser = (id: string) => {
-    setUsers(users.filter(u => u.id !== id));
-    // Eliminar de localStorage
-    const savedUsers = JSON.parse(localStorage.getItem('app_users') || '[]');
-    const filteredUsers = savedUsers.filter((u: any) => u.id !== id);
-    localStorage.setItem('app_users', JSON.stringify(filteredUsers));
+  const handleDeleteUser = async (id: string) => {
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Usuario eliminado exitosamente",
+        variant: "default"
+      });
+
+      await loadUsers();
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el usuario",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddImage = () => {
@@ -358,6 +489,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       />
                     </div>
                     <div>
+                      <Label>Email</Label>
+                      <Input
+                        value={newUser.email}
+                        onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                        placeholder="email@ejemplo.com"
+                        type="email"
+                      />
+                    </div>
+                    <div>
                       <Label>Contraseña (Solo números)</Label>
                       <div className="relative">
                         <Input
@@ -391,15 +531,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       </select>
                     </div>
                     <div>
-                      <Label>Email</Label>
-                      <Input
-                        value={newUser.email}
-                        onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                        placeholder="email@ejemplo.com"
-                        type="email"
-                      />
-                    </div>
-                    <div>
                       <Label>Teléfono</Label>
                       <Input
                         value={newUser.phone}
@@ -418,9 +549,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       </div>
                     )}
                   </div>
-                  <Button onClick={handleAddUser}>
+                  <Button onClick={handleAddUser} disabled={loading}>
                     <Plus size={16} className="mr-1" />
-                    Agregar Usuario
+                    {loading ? 'Creando...' : 'Agregar Usuario'}
                   </Button>
                 </CardContent>
               </Card>
@@ -430,141 +561,95 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   <CardTitle>Lista de Usuarios</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nombre</TableHead>
-                        <TableHead>Usuario</TableHead>
-                        <TableHead>Contraseña</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Teléfono</TableHead>
-                        <TableHead>Vehículo</TableHead>
-                        <TableHead>Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users.map((user) => (
-                        <TableRow key={user.id}>
-                          {editingUser?.id === user.id ? (
-                            <>
-                              <TableCell>
-                                <Input
-                                  value={editingUser.name}
-                                  onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  value={editingUser.username}
-                                  onChange={(e) => setEditingUser({...editingUser, username: e.target.value})}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <div className="relative">
-                                  <Input
-                                    value={editingUser.password}
-                                    onChange={(e) => handlePasswordChange(e.target.value, (value: string) => setEditingUser({...editingUser, password: value}))}
-                                    type={showEditPassword ? "text" : "password"}
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-auto p-1"
-                                    onClick={() => setShowEditPassword(!showEditPassword)}
-                                  >
-                                    {showEditPassword ? <EyeOff size={12} /> : <Eye size={12} />}
-                                  </Button>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <select 
-                                  className="w-full px-2 py-1 border rounded"
-                                  value={editingUser.type}
-                                  onChange={(e) => setEditingUser({...editingUser, type: e.target.value})}
-                                >
-                                  <option value="passenger">Pasajero</option>
-                                  <option value="driver">Conductor</option>
-                                </select>
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  value={editingUser.email}
-                                  onChange={(e) => setEditingUser({...editingUser, email: e.target.value})}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  value={editingUser.phone}
-                                  onChange={(e) => setEditingUser({...editingUser, phone: e.target.value})}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  value={editingUser.vehicle || ''}
-                                  onChange={(e) => setEditingUser({...editingUser, vehicle: e.target.value})}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex gap-1">
-                                  <Button size="sm" onClick={() => handleSaveUser(editingUser)}>
-                                    <Save size={14} />
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={() => setEditingUser(null)}>
-                                    Cancelar
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </>
-                          ) : (
-                            <>
-                              <TableCell>{user.name}</TableCell>
-                              <TableCell>{user.username}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-mono">
-                                    {showPassword[user.id] ? user.password : '•'.repeat(user.password.length)}
-                                  </span>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-auto p-1"
-                                    onClick={() => togglePasswordVisibility(user.id)}
-                                  >
-                                    {showPassword[user.id] ? <EyeOff size={12} /> : <Eye size={12} />}
-                                  </Button>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                  user.type === 'driver' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                                }`}>
-                                  {user.type === 'driver' ? 'Conductor' : 'Pasajero'}
-                                </span>
-                              </TableCell>
-                              <TableCell>{user.email}</TableCell>
-                              <TableCell>{user.phone}</TableCell>
-                              <TableCell>{user.vehicle || '-'}</TableCell>
-                              <TableCell>
-                                <div className="flex gap-1">
-                                  <Button size="sm" variant="outline" onClick={() => setEditingUser(user)}>
-                                    <Edit size={14} />
-                                  </Button>
-                                  <Button size="sm" variant="destructive" onClick={() => handleDeleteUser(user.id)}>
-                                    <Trash2 size={14} />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </>
-                          )}
+                  {loading ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="mt-2">Cargando usuarios...</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nombre</TableHead>
+                          <TableHead>Usuario</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Teléfono</TableHead>
+                          <TableHead>Acciones</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {users.map((user) => (
+                          <TableRow key={user.id}>
+                            {editingUser?.id === user.id ? (
+                              <>
+                                <TableCell>
+                                  <Input
+                                    value={editingUser.name}
+                                    onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Input
+                                    value={editingUser.username}
+                                    onChange={(e) => setEditingUser({...editingUser, username: e.target.value})}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <select 
+                                    className="w-full px-2 py-1 border rounded"
+                                    value={editingUser.type}
+                                    onChange={(e) => setEditingUser({...editingUser, type: e.target.value})}
+                                  >
+                                    <option value="passenger">Pasajero</option>
+                                    <option value="driver">Conductor</option>
+                                  </select>
+                                </TableCell>
+                                <TableCell>
+                                  <Input
+                                    value={editingUser.phone}
+                                    onChange={(e) => setEditingUser({...editingUser, phone: e.target.value})}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-1">
+                                    <Button size="sm" onClick={() => handleSaveUser(editingUser)} disabled={loading}>
+                                      <Save size={14} />
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => setEditingUser(null)}>
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </>
+                            ) : (
+                              <>
+                                <TableCell>{user.name}</TableCell>
+                                <TableCell>{user.username}</TableCell>
+                                <TableCell>
+                                  <span className={`px-2 py-1 rounded text-xs ${
+                                    user.type === 'driver' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    {user.type === 'driver' ? 'Conductor' : 'Pasajero'}
+                                  </span>
+                                </TableCell>
+                                <TableCell>{user.phone}</TableCell>
+                                <TableCell>
+                                  <div className="flex gap-1">
+                                    <Button size="sm" variant="outline" onClick={() => setEditingUser(user)}>
+                                      <Edit size={14} />
+                                    </Button>
+                                    <Button size="sm" variant="destructive" onClick={() => handleDeleteUser(user.id)} disabled={loading}>
+                                      <Trash2 size={14} />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </div>
