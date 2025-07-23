@@ -35,35 +35,74 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = authService.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('Auth state change:', event, session);
         setSession(session);
         
         if (session?.user) {
-          // Fetch user profile
-          const { profile } = await authService.getUserProfile(session.user.id);
-          const authUser = authService.formatAuthUser(session.user, profile);
-          setUser(authUser);
+          // Defer async operations to prevent deadlock
+          setTimeout(() => {
+            authService.getUserProfile(session.user.id).then(({ profile, error }) => {
+              if (error) {
+                console.error('Error fetching user profile:', error);
+                // Fallback to basic user data if profile fetch fails
+                const basicAuthUser = authService.formatAuthUser(session.user, null);
+                setUser(basicAuthUser);
+              } else {
+                const authUser = authService.formatAuthUser(session.user, profile);
+                setUser(authUser);
+              }
+              setLoading(false);
+            }).catch(err => {
+              console.error('Unexpected error fetching profile:', err);
+              // Fallback to basic user data
+              const basicAuthUser = authService.formatAuthUser(session.user, null);
+              setUser(basicAuthUser);
+              setLoading(false);
+            });
+          }, 0);
         } else {
           setUser(null);
+          setLoading(false);
         }
-        
-        setLoading(false);
       }
     );
 
     // Check for existing session
-    authService.getCurrentSession().then(({ session }) => {
+    authService.getCurrentSession().then(({ session, error }) => {
+      if (error) {
+        console.error('Error getting current session:', error);
+        setLoading(false);
+        return;
+      }
+      
       if (session?.user) {
-        authService.getUserProfile(session.user.id).then(({ profile }) => {
-          const authUser = authService.formatAuthUser(session.user, profile);
-          setUser(authUser);
+        authService.getUserProfile(session.user.id).then(({ profile, error }) => {
+          if (error) {
+            console.error('Error fetching user profile on init:', error);
+            // Fallback to basic user data
+            const basicAuthUser = authService.formatAuthUser(session.user, null);
+            setUser(basicAuthUser);
+          } else {
+            const authUser = authService.formatAuthUser(session.user, profile);
+            setUser(authUser);
+          }
+          setSession(session);
+          setLoading(false);
+        }).catch(err => {
+          console.error('Unexpected error on init:', err);
+          // Fallback to basic user data
+          const basicAuthUser = authService.formatAuthUser(session.user, null);
+          setUser(basicAuthUser);
           setSession(session);
           setLoading(false);
         });
       } else {
         setLoading(false);
       }
+    }).catch(err => {
+      console.error('Unexpected error getting session:', err);
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
