@@ -181,10 +181,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signOut = async () => {
+    // Si no hay sesión activa, solo limpiar el estado local
+    if (!session) {
+      setUser(null);
+      setSession(null);
+      toast.success('Sesión cerrada correctamente');
+      return;
+    }
+
     const { error } = await authService.signOut();
     if (error) {
       console.error('Sign out error:', error);
-      toast.error('Error al cerrar sesión');
+      // Incluso si hay error, limpiar el estado local
+      setUser(null);
+      setSession(null);
+      // Solo mostrar error si no es de sesión perdida
+      if (!error.message?.includes('Auth session missing')) {
+        toast.error('Error al cerrar sesión');
+      } else {
+        toast.success('Sesión cerrada correctamente');
+      }
     } else {
       toast.success('Sesión cerrada correctamente');
     }
