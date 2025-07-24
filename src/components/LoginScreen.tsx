@@ -13,8 +13,8 @@ const LoginScreen: React.FC = () => {
 
   const handlePassengerLogin = async () => {
     setIsPassengerLogin(true);
-    // Usar credenciales de pasajero predeterminadas
-    await signIn('pakito@email.com', 'password123');
+    // Usar credenciales de pasajero válidas
+    await signIn('pasajero@test.com', 'password123');
     setIsPassengerLogin(false);
   };
 
