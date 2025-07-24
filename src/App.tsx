@@ -28,26 +28,26 @@ const AppContent = () => {
     );
   }
 
-  // Si no está autenticado, mostrar login
-  if (!user) {
-    return <LoginScreen />;
-  }
-
   // Si es administrador, mostrar dashboard del administrador
-  if (user.type === 'admin') {
+  if (user && user.type === 'admin') {
     return <AdminDashboard onLogout={signOut} />;
   }
 
   // Si es conductor, mostrar dashboard del conductor
-  if (user.type === 'driver') {
+  if (user && user.type === 'driver') {
     return <DriverDashboard driverInfo={user} onLogout={signOut} />;
   }
 
-  // Si es pasajero, mostrar la aplicación normal
+  // Si no está autenticado y no es pasajero, mostrar login para conductores/admins
+  if (!user) {
+    return <LoginScreen />;
+  }
+
+  // Los pasajeros y usuarios no autenticados acceden directamente a la aplicación
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Index onLogout={signOut} />} />
+        <Route path="/" element={<Index onLogout={user ? signOut : undefined} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

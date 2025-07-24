@@ -72,9 +72,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     username: '', 
     email: '',
     password: '',
-    type: 'passenger', 
+    type: 'driver', 
     phone: '', 
     vehicle: '' 
+  });
+  const [newRoute, setNewRoute] = useState({
+    name: '',
+    frequency: '',
+    operatingHours: '',
+    fare: '',
+    description: '',
+    color: '#3B82F6'
   });
   const [newPointOfInterest, setNewPointOfInterest] = useState({
     name: '',
@@ -199,7 +207,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           username: '', 
           email: '',
           password: '',
-          type: 'passenger', 
+          type: 'driver', 
           phone: '', 
           vehicle: '' 
         });
@@ -330,6 +338,43 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     saveAdminPointsOfInterest(updatedPoints);
   };
 
+  const handleAddRoute = () => {
+    if (!newRoute.name || !newRoute.frequency || !newRoute.operatingHours || !newRoute.fare) {
+      toast({
+        title: "Error",
+        description: "Por favor complete todos los campos obligatorios",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newRouteData = {
+      id: `ruta-${Date.now()}`,
+      name: newRoute.name,
+      frequency: newRoute.frequency,
+      operatingHours: newRoute.operatingHours,
+      fare: newRoute.fare,
+      description: newRoute.description,
+      color: newRoute.color
+    };
+
+    setRoutes([...routes, newRouteData]);
+    setNewRoute({
+      name: '',
+      frequency: '',
+      operatingHours: '',
+      fare: '',
+      description: '',
+      color: '#3B82F6'
+    });
+    
+    toast({
+      title: "Éxito",
+      description: "Ruta agregada exitosamente",
+      variant: "default"
+    });
+  };
+
   const togglePasswordVisibility = (userId: string) => {
     setShowPassword(prev => ({
       ...prev,
@@ -379,13 +424,85 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </TabsList>
 
           <TabsContent value="routes">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestión de Rutas de Transporte</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {routes.map((route) => (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Agregar Nueva Ruta</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <Label>Nombre de la Ruta</Label>
+                      <Input
+                        value={newRoute.name}
+                        onChange={(e) => setNewRoute({...newRoute, name: e.target.value})}
+                        placeholder="Ej: Pampatar - Porlamar"
+                      />
+                    </div>
+                    <div>
+                      <Label>Frecuencia</Label>
+                      <Input
+                        value={newRoute.frequency}
+                        onChange={(e) => setNewRoute({...newRoute, frequency: e.target.value})}
+                        placeholder="Ej: 15-20 min"
+                      />
+                    </div>
+                    <div>
+                      <Label>Horarios</Label>
+                      <Input
+                        value={newRoute.operatingHours}
+                        onChange={(e) => setNewRoute({...newRoute, operatingHours: e.target.value})}
+                        placeholder="Ej: 5:00 AM - 10:00 PM"
+                      />
+                    </div>
+                    <div>
+                      <Label>Tarifa</Label>
+                      <Input
+                        value={newRoute.fare}
+                        onChange={(e) => setNewRoute({...newRoute, fare: e.target.value})}
+                        placeholder="Ej: Bs. 2.50"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Descripción</Label>
+                      <Input
+                        value={newRoute.description}
+                        onChange={(e) => setNewRoute({...newRoute, description: e.target.value})}
+                        placeholder="Descripción de la ruta"
+                      />
+                    </div>
+                    <div>
+                      <Label>Color de la Línea</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={newRoute.color}
+                          onChange={(e) => setNewRoute({...newRoute, color: e.target.value})}
+                          className="w-16 h-10"
+                        />
+                        <Input
+                          value={newRoute.color}
+                          onChange={(e) => setNewRoute({...newRoute, color: e.target.value})}
+                          placeholder="#3B82F6"
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <Button onClick={handleAddRoute}>
+                    <Plus size={16} className="mr-1" />
+                    Agregar Ruta
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Rutas de Transporte Existentes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {routes.map((route) => (
                     <Card key={route.id} className="p-4">
                       {editingRoute?.id === route.id ? (
                         <div className="space-y-4">
@@ -458,10 +575,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         </div>
                       )}
                     </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="users">
@@ -526,8 +644,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         value={newUser.type}
                         onChange={(e) => setNewUser({...newUser, type: e.target.value})}
                       >
-                        <option value="passenger">Pasajero</option>
                         <option value="driver">Conductor</option>
+                        <option value="admin">Administrador</option>
                       </select>
                     </div>
                     <div>
@@ -600,8 +718,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                                     value={editingUser.type}
                                     onChange={(e) => setEditingUser({...editingUser, type: e.target.value})}
                                   >
-                                    <option value="passenger">Pasajero</option>
                                     <option value="driver">Conductor</option>
+                                    <option value="admin">Administrador</option>
                                   </select>
                                 </TableCell>
                                 <TableCell>
@@ -627,9 +745,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                                 <TableCell>{user.username}</TableCell>
                                 <TableCell>
                                   <span className={`px-2 py-1 rounded text-xs ${
-                                    user.type === 'driver' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                    user.type === 'driver' ? 'bg-green-100 text-green-800' : 
+                                    user.type === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
                                   }`}>
-                                    {user.type === 'driver' ? 'Conductor' : 'Pasajero'}
+                                    {user.type === 'driver' ? 'Conductor' : 
+                                     user.type === 'admin' ? 'Administrador' : 'Usuario'}
                                   </span>
                                 </TableCell>
                                 <TableCell>{user.phone}</TableCell>
