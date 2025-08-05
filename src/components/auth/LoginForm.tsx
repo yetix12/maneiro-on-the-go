@@ -33,6 +33,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     setIsSigningIn(false);
   };
 
+  const handlePassengerLogin = async () => {
+    setIsSigningIn(true);
+    setError('');
+
+    const { error } = await signIn('pasajero@test.com', 'password123');
+    
+    if (error) {
+      setError('Error al acceder como pasajero');
+    } else {
+      onSuccess?.();
+    }
+    
+    setIsSigningIn(false);
+  };
+
   return (
     <form onSubmit={handleLogin} className="space-y-4">
       <div className="space-y-2">
@@ -80,6 +95,27 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
         disabled={isSigningIn}
       >
         {isSigningIn ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+      </Button>
+      
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">
+            O
+          </span>
+        </div>
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        disabled={isSigningIn}
+        onClick={handlePassengerLogin}
+      >
+        {isSigningIn ? 'Accediendo...' : 'Pasajero'}
       </Button>
     </form>
   );
