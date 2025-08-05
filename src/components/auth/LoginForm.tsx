@@ -37,7 +37,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     setIsSigningIn(true);
     setError('');
 
-    const { error } = await signIn('pasajero@test.com', 'password123');
+    const { error } = await signIn('pablo@gmail.com', 'password123');
     
     if (error) {
       setError('Error al acceder como pasajero');
