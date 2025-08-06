@@ -26,22 +26,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [users, setUsers] = useState<any[]>([]);
 
   // Estado para imágenes
-  const [images, setImages] = useState([
-    {
-      id: '1',
-      title: 'Terminal Pampatar',
-      description: 'Estación principal de autobuses',
-      url: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=500',
-      category: 'Terminal'
-    },
-    {
-      id: '2',
-      title: 'Playa El Agua',
-      description: 'Hermosa playa de Maneiro',
-      url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500',
-      category: 'Turismo'
-    }
-  ]);
+  const [images, setImages] = useState<any[]>([]);
 
   // Estado para puntos de interés
   const [pointsOfInterest, setPointsOfInterest] = useState(() => getAdminPointsOfInterest());
@@ -97,6 +82,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     loadUsers();
     loadRoutes();
     loadBusStops();
+    loadImages();
   }, []);
 
   const loadRoutes = async () => {
@@ -317,10 +303,73 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleAddImage = () => {
-    if (newImage.title && newImage.url) {
-      setImages([...images, { ...newImage, id: Date.now().toString() }]);
+  const loadImages = async () => {
+    try {
+      const { data: galleryData, error } = await supabase
+        .from('galeria_maneiro')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      // Formatear datos para compatibilidad con el componente existente
+      const formattedImages = galleryData?.map(item => ({
+        id: item.id,
+        title: item.titulo,
+        description: item.descripcion,
+        url: item.imagen_url,
+        category: item.categoria
+      })) || [];
+      
+      setImages(formattedImages);
+    } catch (error) {
+      console.error('Error loading images:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las imágenes",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddImage = async () => {
+    if (!newImage.title || !newImage.url || !newImage.category) {
+      toast({
+        title: "Error",
+        description: "Por favor complete todos los campos obligatorios",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('galeria_maneiro')
+        .insert([{
+          titulo: newImage.title,
+          descripcion: newImage.description,
+          imagen_url: newImage.url,
+          categoria: newImage.category
+        }])
+        .select();
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Imagen agregada exitosamente",
+        variant: "default"
+      });
+
       setNewImage({ title: '', description: '', url: '', category: '' });
+      await loadImages();
+    } catch (error: any) {
+      console.error('Error adding image:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo agregar la imagen",
+        variant: "destructive"
+      });
     }
   };
 
@@ -338,8 +387,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleDeleteImage = (id: string) => {
-    setImages(images.filter(img => img.id !== id));
+  const handleDeleteImage = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('galeria_maneiro')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Imagen eliminada exitosamente",
+        variant: "default"
+      });
+
+      await loadImages();
+    } catch (error: any) {
+      console.error('Error deleting image:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar la imagen",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleAddPointOfInterest = () => {

@@ -74,7 +74,7 @@ const AdminDiagnostic: React.FC = () => {
         tableTests.push({
           test_name: 'profiles_table_access',
           result: 'FAIL',
-          details: { error: err.message, count: 0 }
+          details: { error: err.message, count: 0, access_granted: false }
         });
       }
 
