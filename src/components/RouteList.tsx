@@ -160,6 +160,12 @@ const RouteList = () => {
                   <span className="text-gray-600 block">Ruta Corta:</span>
                   <span className="font-medium text-green-700">{route.short_route || 'No definida'}</span>
                 </div>
+                {route.long_route && (
+                  <div>
+                    <span className="text-gray-600 block">Ruta Larga:</span>
+                    <span className="font-medium text-green-700">{route.long_route}</span>
+                  </div>
+                )}
                 <div>
                   <span className="text-gray-600 block">Color:</span>
                   <div className="flex items-center gap-2">
@@ -174,13 +180,6 @@ const RouteList = () => {
             </div>
           </div>
 
-          {route.long_route && (
-            <div className="mb-4">
-              <h4 className="font-semibold mb-2 text-sm">Ruta Larga:</h4>
-              <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border-l-4 border-blue-400">{route.long_route}</p>
-            </div>
-          )}
-
           {route.stops && route.stops.length > 0 && (
             <div className="mb-4">
               <h4 className="font-semibold mb-2 text-sm">Paradas ({route.stops.length}):</h4>
@@ -194,12 +193,6 @@ const RouteList = () => {
             </div>
           )}
 
-          <div className="mt-4 pt-3 border-t border-gray-200">
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>Creada: {new Date(route.created_at).toLocaleDateString()}</span>
-              <span>Actualizada: {new Date(route.updated_at).toLocaleDateString()}</span>
-            </div>
-          </div>
         </Card>
       ))}
 
