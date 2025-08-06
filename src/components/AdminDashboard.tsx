@@ -40,7 +40,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     category: 'parada',
     latitude: 0,
     longitude: 0,
-    routeId: ''
+    routeId: '',
+    ubicacion: ''
   });
 
   const [editingRoute, setEditingRoute] = useState<any>(null);
@@ -434,11 +435,39 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     saveAdminPointsOfInterest(updatedPoints);
   };
 
+  // Parse ubicacion format: "10°59'11.8"N 63°49'06.8"W"
+  const parseUbicacion = (ubicacion: string) => {
+    const regex = /(\d+)°(\d+)'([\d.]+)"([NS])\s+(\d+)°(\d+)'([\d.]+)"([EW])/;
+    const match = ubicacion.match(regex);
+    
+    if (!match) return null;
+    
+    const [_, latDeg, latMin, latSec, latDir, lngDeg, lngMin, lngSec, lngDir] = match;
+    
+    let latitude = parseInt(latDeg) + parseInt(latMin)/60 + parseFloat(latSec)/3600;
+    let longitude = parseInt(lngDeg) + parseInt(lngMin)/60 + parseFloat(lngSec)/3600;
+    
+    if (latDir === 'S') latitude = -latitude;
+    if (lngDir === 'W') longitude = -longitude;
+    
+    return { latitude, longitude };
+  };
+
   const handleAddBusStop = async () => {
-    if (!newBusStop.name || !newBusStop.latitude || !newBusStop.longitude || !newBusStop.routeId) {
+    if (!newBusStop.name || !newBusStop.ubicacion || !newBusStop.routeId) {
       toast({
         title: "Error",
-        description: "Por favor complete los campos obligatorios (incluya la ruta)",
+        description: "Por favor complete los campos obligatorios (nombre, ubicación y ruta)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const coordinates = parseUbicacion(newBusStop.ubicacion);
+    if (!coordinates) {
+      toast({
+        title: "Error",
+        description: "Formato de ubicación inválido. Use: 10°59'11.8\"N 63°49'06.8\"W",
         variant: "destructive"
       });
       return;
@@ -452,8 +481,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           description: newBusStop.description,
           image_url: newBusStop.imageUrl,
           category: newBusStop.category,
-          latitude: newBusStop.latitude,
-          longitude: newBusStop.longitude
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          created_by: (await supabase.auth.getUser()).data.user?.id
         }])
         .select();
 
@@ -472,7 +502,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         category: 'parada',
         latitude: 0,
         longitude: 0,
-        routeId: ''
+        routeId: '',
+        ubicacion: ''
       });
 
       await loadBusStops();
@@ -792,25 +823,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         <option value="punto_transferencia">Punto de Transferencia</option>
                       </select>
                     </div>
-                    <div>
-                      <Label>Latitud</Label>
+                    <div className="col-span-2">
+                      <Label>Ubicación</Label>
                       <Input
-                        value={newBusStop.latitude}
-                        onChange={(e) => setNewBusStop({...newBusStop, latitude: parseFloat(e.target.value) || 0})}
-                        placeholder="11.0000"
-                        type="number"
-                        step="0.0001"
+                        value={newBusStop.ubicacion}
+                        onChange={(e) => setNewBusStop({...newBusStop, ubicacion: e.target.value})}
+                        placeholder='10°59&apos;11.8"N 63°49&apos;06.8"W'
                       />
-                    </div>
-                    <div>
-                      <Label>Longitud</Label>
-                      <Input
-                        value={newBusStop.longitude}
-                        onChange={(e) => setNewBusStop({...newBusStop, longitude: parseFloat(e.target.value) || 0})}
-                        placeholder="-63.8500"
-                        type="number"
-                        step="0.0001"
-                      />
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Formato: coordenadas de Google Maps (ej: 10°59&apos;11.8"N 63°49&apos;06.8"W)
+                      </p>
                     </div>
                     <div className="col-span-2">
                       <Label>URL de la Imagen</Label>
