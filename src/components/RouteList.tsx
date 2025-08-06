@@ -110,7 +110,7 @@ const RouteList = () => {
 
       {routes.map((route) => (
         <Card key={route.id} className="p-4 hover:shadow-lg transition-shadow">
-          <div className="flex items-start justify-between mb-3">
+          <div className="flex items-start justify-between mb-4">
             <div className="flex items-center space-x-3">
               <div 
                 className="w-4 h-8 rounded"
@@ -118,40 +118,72 @@ const RouteList = () => {
               />
               <div>
                 <h3 className="font-bold text-lg">{route.name}</h3>
-                {route.description && (
-                  <p className="text-gray-600 text-sm">{route.description}</p>
-                )}
+                <p className="text-xs text-gray-500">ID: {route.route_identification || route.id.slice(0, 8)}</p>
               </div>
             </div>
             <Badge variant="secondary" className="bg-green-100 text-green-800">
               <Bus size={12} className="mr-1" />
-              Activa
+              {route.is_active ? 'Activa' : 'Inactiva'}
             </Badge>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="text-center">
-              <Clock size={16} className="mx-auto mb-1 text-blue-600" />
-              <p className="text-xs text-gray-600">ID Ruta</p>
-              <p className="font-semibold text-xs">{route.route_identification || route.id.slice(0, 8)}</p>
+          {route.description && (
+            <div className="mb-4">
+              <h4 className="font-semibold mb-1 text-sm">Descripción:</h4>
+              <p className="text-gray-600 text-sm">{route.description}</p>
             </div>
-            <div className="text-center">
-              <MapPin size={16} className="mx-auto mb-1 text-green-600" />
-              <p className="text-xs text-gray-600">Ruta Corta</p>
-              <p className="font-semibold text-xs">{route.short_route || 'No definida'}</p>
+          )}
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <h4 className="font-semibold text-sm text-blue-800 mb-2">Información de Operación</h4>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Frecuencia:</span>
+                  <span className="font-medium">15-20 min</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Horarios:</span>
+                  <span className="font-medium">5:00 AM - 10:00 PM</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tarifa:</span>
+                  <span className="font-medium">Bs. 2.50</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-green-50 p-3 rounded-lg">
+              <h4 className="font-semibold text-sm text-green-800 mb-2">Información de Ruta</h4>
+              <div className="space-y-2 text-xs">
+                <div>
+                  <span className="text-gray-600 block">Ruta Corta:</span>
+                  <span className="font-medium text-green-700">{route.short_route || 'No definida'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600 block">Color:</span>
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-4 h-4 rounded border"
+                      style={{ backgroundColor: route.color }}
+                    />
+                    <span className="font-medium">{route.color}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           {route.long_route && (
             <div className="mb-4">
-              <h4 className="font-semibold mb-2 text-sm">Ruta Completa:</h4>
-              <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded">{route.long_route}</p>
+              <h4 className="font-semibold mb-2 text-sm">Ruta Larga:</h4>
+              <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border-l-4 border-blue-400">{route.long_route}</p>
             </div>
           )}
 
           {route.stops && route.stops.length > 0 && (
-            <div>
-              <h4 className="font-semibold mb-2 text-sm">Paradas principales:</h4>
+            <div className="mb-4">
+              <h4 className="font-semibold mb-2 text-sm">Paradas ({route.stops.length}):</h4>
               <div className="flex flex-wrap gap-2">
                 {route.stops.map((stop) => (
                   <Badge key={stop.id} variant="outline" className="text-xs">
@@ -161,6 +193,13 @@ const RouteList = () => {
               </div>
             </div>
           )}
+
+          <div className="mt-4 pt-3 border-t border-gray-200">
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>Creada: {new Date(route.created_at).toLocaleDateString()}</span>
+              <span>Actualizada: {new Date(route.updated_at).toLocaleDateString()}</span>
+            </div>
+          </div>
         </Card>
       ))}
 
