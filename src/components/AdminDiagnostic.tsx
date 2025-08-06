@@ -57,15 +57,14 @@ const AdminDiagnostic: React.FC = () => {
       
       // Test profiles access
       try {
-        const { data: profilesData, error: profilesError } = await supabase
+        const { count: profilesCount, error: profilesError } = await supabase
           .from('profiles')
-          .select('count(*)')
-          .limit(1);
+          .select('*', { count: 'exact', head: true });
         
         tableTests.push({
           test_name: 'profiles_table_access',
           result: profilesError ? 'FAIL' : 'PASS',
-          details: { error: profilesError?.message, data: profilesData }
+          details: { error: profilesError?.message, count: profilesCount }
         });
       } catch (err: any) {
         tableTests.push({
@@ -77,15 +76,14 @@ const AdminDiagnostic: React.FC = () => {
 
       // Test bus_routes access
       try {
-        const { data: routesData, error: routesError } = await supabase
+        const { count: routesCount, error: routesError } = await supabase
           .from('bus_routes')
-          .select('count(*)')
-          .limit(1);
+          .select('*', { count: 'exact', head: true });
         
         tableTests.push({
           test_name: 'bus_routes_table_access',
           result: routesError ? 'FAIL' : 'PASS',
-          details: { error: routesError?.message, data: routesData }
+          details: { error: routesError?.message, count: routesCount }
         });
       } catch (err: any) {
         tableTests.push({
@@ -97,15 +95,14 @@ const AdminDiagnostic: React.FC = () => {
 
       // Test bus_stop_info access
       try {
-        const { data: stopsData, error: stopsError } = await supabase
+        const { count: stopsCount, error: stopsError } = await supabase
           .from('bus_stop_info')
-          .select('count(*)')
-          .limit(1);
+          .select('*', { count: 'exact', head: true });
         
         tableTests.push({
           test_name: 'bus_stop_info_table_access',
           result: stopsError ? 'FAIL' : 'PASS',
-          details: { error: stopsError?.message, data: stopsData }
+          details: { error: stopsError?.message, count: stopsCount }
         });
       } catch (err: any) {
         tableTests.push({
