@@ -21,7 +21,10 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          long_route: string | null
           name: string
+          route_identification: string | null
+          short_route: string | null
           updated_at: string
         }
         Insert: {
@@ -30,7 +33,10 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          long_route?: string | null
           name: string
+          route_identification?: string | null
+          short_route?: string | null
           updated_at?: string
         }
         Update: {
@@ -39,6 +45,48 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          long_route?: string | null
+          name?: string
+          route_identification?: string | null
+          short_route?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bus_stop_info: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           updated_at?: string
         }
