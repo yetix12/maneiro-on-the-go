@@ -129,23 +129,25 @@ const RouteList = () => {
             </Badge>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="text-center">
               <Clock size={16} className="mx-auto mb-1 text-blue-600" />
-              <p className="text-xs text-gray-600">Frecuencia</p>
-              <p className="font-semibold text-sm">15-20 min</p>
+              <p className="text-xs text-gray-600">ID Ruta</p>
+              <p className="font-semibold text-xs">{route.route_identification || route.id.slice(0, 8)}</p>
             </div>
             <div className="text-center">
               <MapPin size={16} className="mx-auto mb-1 text-green-600" />
-              <p className="text-xs text-gray-600">Tarifa</p>
-              <p className="font-semibold text-sm">Bs. 2.50</p>
-            </div>
-            <div className="text-center">
-              <div className="w-4 h-4 mx-auto mb-1 bg-yellow-500 rounded-full" />
-              <p className="text-xs text-gray-600">Horario</p>
-              <p className="font-semibold text-xs">5:00 AM - 10:00 PM</p>
+              <p className="text-xs text-gray-600">Ruta Corta</p>
+              <p className="font-semibold text-xs">{route.short_route || 'No definida'}</p>
             </div>
           </div>
+
+          {route.long_route && (
+            <div className="mb-4">
+              <h4 className="font-semibold mb-2 text-sm">Ruta Completa:</h4>
+              <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded">{route.long_route}</p>
+            </div>
+          )}
 
           {route.stops && route.stops.length > 0 && (
             <div>
