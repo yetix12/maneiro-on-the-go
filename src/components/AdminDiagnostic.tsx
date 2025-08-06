@@ -57,20 +57,24 @@ const AdminDiagnostic: React.FC = () => {
       
       // Test profiles access
       try {
-        const { count: profilesCount, error: profilesError } = await supabase
+        const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('*', { count: 'exact', head: true });
+          .select('id');
         
         tableTests.push({
           test_name: 'profiles_table_access',
           result: profilesError ? 'FAIL' : 'PASS',
-          details: { error: profilesError?.message, count: profilesCount }
+          details: { 
+            error: profilesError?.message || '', 
+            count: profilesData ? profilesData.length : 0,
+            access_granted: !profilesError
+          }
         });
       } catch (err: any) {
         tableTests.push({
           test_name: 'profiles_table_access',
           result: 'FAIL',
-          details: { error: err.message }
+          details: { error: err.message, count: 0 }
         });
       }
 
