@@ -896,7 +896,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {users.filter(user => user.user_type !== 'passenger' && user.user_type !== 'Usuario').map((user) => (
+                        {users.map((user) => (
                           <TableRow key={user.id}>
                             {editingUser?.id === user.id ? (
                               <>

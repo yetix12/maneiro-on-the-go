@@ -130,51 +130,6 @@ export type Database = {
           },
         ]
       }
-      paradas: {
-        Row: {
-          accessibility: boolean | null
-          address: string | null
-          created_at: string
-          description: string | null
-          facilities: string[] | null
-          id: string
-          latitude: number
-          longitude: number
-          name: string
-          route_id: string
-          stop_order: number
-          updated_at: string
-        }
-        Insert: {
-          accessibility?: boolean | null
-          address?: string | null
-          created_at?: string
-          description?: string | null
-          facilities?: string[] | null
-          id?: string
-          latitude: number
-          longitude: number
-          name: string
-          route_id: string
-          stop_order: number
-          updated_at?: string
-        }
-        Update: {
-          accessibility?: boolean | null
-          address?: string | null
-          created_at?: string
-          description?: string | null
-          facilities?: string[] | null
-          id?: string
-          latitude?: number
-          longitude?: number
-          name?: string
-          route_id?: string
-          stop_order?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
       points_of_interest: {
         Row: {
           category: string | null
