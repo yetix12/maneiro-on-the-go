@@ -39,7 +39,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     imageUrl: '',
     category: 'parada',
     latitude: 0,
-    longitude: 0
+    longitude: 0,
+    routeId: ''
   });
 
   const [editingRoute, setEditingRoute] = useState<any>(null);
@@ -434,10 +435,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   const handleAddBusStop = async () => {
-    if (!newBusStop.name || !newBusStop.latitude || !newBusStop.longitude) {
+    if (!newBusStop.name || !newBusStop.latitude || !newBusStop.longitude || !newBusStop.routeId) {
       toast({
         title: "Error",
-        description: "Por favor complete los campos obligatorios",
+        description: "Por favor complete los campos obligatorios (incluya la ruta)",
         variant: "destructive"
       });
       return;
@@ -470,7 +471,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         imageUrl: '',
         category: 'parada',
         latitude: 0,
-        longitude: 0
+        longitude: 0,
+        routeId: ''
       });
 
       await loadBusStops();
@@ -762,6 +764,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         onChange={(e) => setNewBusStop({...newBusStop, name: e.target.value})}
                         placeholder="Ej: Parada Central"
                       />
+                    </div>
+                    <div>
+                      <Label>Ruta</Label>
+                      <select 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        value={newBusStop.routeId}
+                        onChange={(e) => setNewBusStop({...newBusStop, routeId: e.target.value})}
+                      >
+                        <option value="">Seleccionar ruta</option>
+                        {routes.map((route) => (
+                          <option key={route.id} value={route.id}>
+                            ● {route.route_identification || route.name} ({route.color})
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <Label>Categoría</Label>
