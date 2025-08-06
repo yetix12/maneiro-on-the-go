@@ -308,6 +308,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      debug_admin_check: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          current_user_id: string
+          user_exists: boolean
+          user_meta_data: Json
+          user_type: string
+          is_admin_result: boolean
+        }[]
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
