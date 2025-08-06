@@ -59,18 +59,23 @@ export const authService = {
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
     
     return { profile: data, error };
   },
 
   // Convert Supabase user to AuthUser format
   formatAuthUser: (user: User, profile: UserProfile | null): AuthUser => {
+    // Fallback to user metadata if profile is not available
+    const userType = profile?.user_type || user.user_metadata?.user_type || 'passenger';
+    const fullName = profile?.full_name || user.user_metadata?.full_name || '';
+    const username = profile?.username || user.user_metadata?.username || user.email?.split('@')[0] || '';
+    
     return {
       id: user.id,
-      username: profile?.username || user.email?.split('@')[0] || '',
-      name: profile?.full_name || profile?.username || user.email?.split('@')[0] || '',
-      type: (profile?.user_type as 'passenger' | 'driver' | 'admin') || 'passenger',
+      username: username,
+      name: fullName || username,
+      type: userType as 'passenger' | 'driver' | 'admin',
       email: user.email
     };
   },

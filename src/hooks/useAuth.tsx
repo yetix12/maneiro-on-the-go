@@ -45,19 +45,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             authService.getUserProfile(session.user.id).then(({ profile, error }) => {
               if (error) {
                 console.error('Error fetching user profile:', error);
-                // Fallback to basic user data if profile fetch fails
-                const basicAuthUser = authService.formatAuthUser(session.user, null);
-                setUser(basicAuthUser);
+                // Even if profile fetch fails, use metadata from auth.users
+                const authUser = authService.formatAuthUser(session.user, null);
+                console.log('Using fallback auth user:', authUser);
+                setUser(authUser);
               } else {
                 const authUser = authService.formatAuthUser(session.user, profile);
+                console.log('Using profile-based auth user:', authUser);
                 setUser(authUser);
               }
               setLoading(false);
             }).catch(err => {
               console.error('Unexpected error fetching profile:', err);
-              // Fallback to basic user data
-              const basicAuthUser = authService.formatAuthUser(session.user, null);
-              setUser(basicAuthUser);
+              // Always fallback to user metadata
+              const authUser = authService.formatAuthUser(session.user, null);
+              console.log('Using error fallback auth user:', authUser);
+              setUser(authUser);
               setLoading(false);
             });
           }, 0);
@@ -80,20 +83,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         authService.getUserProfile(session.user.id).then(({ profile, error }) => {
           if (error) {
             console.error('Error fetching user profile on init:', error);
-            // Fallback to basic user data
-            const basicAuthUser = authService.formatAuthUser(session.user, null);
-            setUser(basicAuthUser);
+            // Even if profile fetch fails, use metadata from auth.users
+            const authUser = authService.formatAuthUser(session.user, null);
+            console.log('Using fallback auth user on init:', authUser);
+            setUser(authUser);
           } else {
             const authUser = authService.formatAuthUser(session.user, profile);
+            console.log('Using profile-based auth user on init:', authUser);
             setUser(authUser);
           }
           setSession(session);
           setLoading(false);
         }).catch(err => {
           console.error('Unexpected error on init:', err);
-          // Fallback to basic user data
-          const basicAuthUser = authService.formatAuthUser(session.user, null);
-          setUser(basicAuthUser);
+          // Always fallback to user metadata
+          const authUser = authService.formatAuthUser(session.user, null);
+          console.log('Using error fallback auth user on init:', authUser);
+          setUser(authUser);
           setSession(session);
           setLoading(false);
         });
