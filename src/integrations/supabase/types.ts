@@ -130,6 +130,39 @@ export type Database = {
           },
         ]
       }
+      galeria_maneiro: {
+        Row: {
+          categoria: string
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          id: string
+          imagen_url: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          id?: string
+          imagen_url: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          id?: string
+          imagen_url?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       paradas: {
         Row: {
           accessibility: boolean | null
