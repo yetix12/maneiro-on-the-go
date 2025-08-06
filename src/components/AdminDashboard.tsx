@@ -18,30 +18,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const { toast } = useToast();
   
   // Estado para rutas
-  const [routes, setRoutes] = useState([
-    {
-      id: 'ruta-1',
-      name: 'Pampatar - Porlamar',
-      description: 'Conecta el centro histórico con la zona comercial',
-      frequency: '15-20 min',
-      operatingHours: '5:00 AM - 10:00 PM',
-      fare: 'Bs. 2.50',
-      color: '#3B82F6'
-    },
-    {
-      id: 'ruta-2',
-      name: 'Pampatar - Playa El Agua',
-      description: 'Ruta turística hacia las mejores playas',
-      frequency: '30-45 min',
-      operatingHours: '6:00 AM - 8:00 PM',
-      fare: 'Bs. 3.00',
-      color: '#10B981'
-    }
-  ]);
+  const [routes, setRoutes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // Estado para usuarios
   const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Estado para imágenes
   const [images, setImages] = useState([
@@ -64,6 +45,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   // Estado para puntos de interés
   const [pointsOfInterest, setPointsOfInterest] = useState(() => getAdminPointsOfInterest());
 
+  // Estados para paradas de autobús
+  const [busStops, setBusStops] = useState<any[]>([]);
+  const [newBusStop, setNewBusStop] = useState({
+    name: '',
+    description: '',
+    imageUrl: '',
+    category: 'parada',
+    latitude: 0,
+    longitude: 0
+  });
+
   const [editingRoute, setEditingRoute] = useState<any>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [newImage, setNewImage] = useState({ title: '', description: '', url: '', category: '' });
@@ -80,7 +72,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     name: '',
     frequency: '',
     operatingHours: '',
-    fare: '', // Este ahora será "Ruta corta"
+    shortRoute: '', // Antes era "fare", ahora será "Ruta corta"
     longRoute: '', // Nuevo campo para "Ruta larga expresado en Bs"
     routeIdentification: '', // Nuevo campo para "Identificación de la ruta"
     description: '',
@@ -102,7 +94,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   // Cargar usuarios desde Supabase
   useEffect(() => {
     loadUsers();
+    loadRoutes();
+    loadBusStops();
   }, []);
+
+  const loadRoutes = async () => {
+    try {
+      const { data: routesData, error } = await supabase
+        .from('bus_routes')
+        .select('*')
+        .eq('is_active', true);
+
+      if (error) throw error;
+      setRoutes(routesData || []);
+    } catch (error) {
+      console.error('Error loading routes:', error);
+    }
+  };
+
+  const loadBusStops = async () => {
+    try {
+      const { data: busStopsData, error } = await supabase
+        .from('bus_stop_info')
+        .select('*');
+
+      if (error) throw error;
+      setBusStops(busStopsData || []);
+    } catch (error) {
+      console.error('Error loading bus stops:', error);
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -340,8 +361,85 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     saveAdminPointsOfInterest(updatedPoints);
   };
 
-  const handleAddRoute = () => {
-    if (!newRoute.name || !newRoute.frequency || !newRoute.operatingHours || !newRoute.fare || !newRoute.longRoute || !newRoute.routeIdentification) {
+  const handleAddBusStop = async () => {
+    if (!newBusStop.name || !newBusStop.latitude || !newBusStop.longitude) {
+      toast({
+        title: "Error",
+        description: "Por favor complete los campos obligatorios",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('bus_stop_info')
+        .insert([{
+          name: newBusStop.name,
+          description: newBusStop.description,
+          image_url: newBusStop.imageUrl,
+          category: newBusStop.category,
+          latitude: newBusStop.latitude,
+          longitude: newBusStop.longitude
+        }])
+        .select();
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Parada de autobús agregada exitosamente",
+        variant: "default"
+      });
+
+      setNewBusStop({
+        name: '',
+        description: '',
+        imageUrl: '',
+        category: 'parada',
+        latitude: 0,
+        longitude: 0
+      });
+
+      await loadBusStops();
+    } catch (error: any) {
+      console.error('Error adding bus stop:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo agregar la parada",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteBusStop = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('bus_stop_info')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Parada eliminada exitosamente",
+        variant: "default"
+      });
+
+      await loadBusStops();
+    } catch (error: any) {
+      console.error('Error deleting bus stop:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar la parada",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddRoute = async () => {
+    if (!newRoute.name || !newRoute.frequency || !newRoute.operatingHours || !newRoute.shortRoute || !newRoute.longRoute || !newRoute.routeIdentification) {
       toast({
         title: "Error",
         description: "Por favor complete todos los campos obligatorios",
@@ -350,35 +448,50 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       return;
     }
 
-    const newRouteData = {
-      id: `ruta-${Date.now()}`,
-      name: newRoute.name,
-      frequency: newRoute.frequency,
-      operatingHours: newRoute.operatingHours,
-      fare: newRoute.fare,
-      longRoute: newRoute.longRoute,
-      routeIdentification: newRoute.routeIdentification,
-      description: newRoute.description,
-      color: newRoute.color
-    };
+    try {
+      // Guardar en la base de datos
+      const { data, error } = await supabase
+        .from('bus_routes')
+        .insert([
+          {
+            name: newRoute.name,
+            description: newRoute.description,
+            color: newRoute.color,
+            short_route: newRoute.shortRoute,
+            long_route: newRoute.longRoute,
+            route_identification: newRoute.routeIdentification
+          }
+        ])
+        .select();
 
-    setRoutes([...routes, newRouteData]);
-    setNewRoute({
-      name: '',
-      frequency: '',
-      operatingHours: '',
-      fare: '',
-      longRoute: '',
-      routeIdentification: '',
-      description: '',
-      color: '#3B82F6'
-    });
-    
-    toast({
-      title: "Éxito",
-      description: "Ruta agregada exitosamente",
-      variant: "default"
-    });
+      if (error) throw error;
+
+      setNewRoute({
+        name: '',
+        frequency: '',
+        operatingHours: '',
+        shortRoute: '',
+        longRoute: '',
+        routeIdentification: '',
+        description: '',
+        color: '#3B82F6'
+      });
+      
+      toast({
+        title: "Éxito",
+        description: "Ruta agregada exitosamente",
+        variant: "default"
+      });
+
+      await loadRoutes();
+    } catch (error: any) {
+      console.error('Error adding route:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo agregar la ruta",
+        variant: "destructive"
+      });
+    }
   };
 
   const togglePasswordVisibility = (userId: string) => {
@@ -410,7 +523,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
       <div className="p-6">
         <Tabs defaultValue="routes" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="routes" className="flex items-center gap-2">
               <MapPin size={16} />
               Rutas
@@ -422,6 +535,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <TabsTrigger value="images" className="flex items-center gap-2">
               <Image size={16} />
               Imágenes
+            </TabsTrigger>
+            <TabsTrigger value="bus-stops" className="flex items-center gap-2">
+              <MapPin size={16} />
+              Paradas
             </TabsTrigger>
             <TabsTrigger value="map" className="flex items-center gap-2">
               <Map size={16} />
@@ -464,8 +581,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <div>
                       <Label>Ruta corta</Label>
                       <Input
-                        value={newRoute.fare}
-                        onChange={(e) => setNewRoute({...newRoute, fare: e.target.value})}
+                        value={newRoute.shortRoute}
+                        onChange={(e) => setNewRoute({...newRoute, shortRoute: e.target.value})}
                         placeholder="Ej: Bs. 2.50"
                       />
                     </div>
@@ -520,71 +637,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Rutas de Transporte Existentes</CardTitle>
+                  <CardTitle>Rutas de Transporte</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {routes.map((route) => (
-                    <Card key={route.id} className="p-4">
-                      {editingRoute?.id === route.id ? (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label>Nombre de la Ruta</Label>
-                              <Input
-                                value={editingRoute.name}
-                                onChange={(e) => setEditingRoute({...editingRoute, name: e.target.value})}
-                              />
-                            </div>
-                            <div>
-                              <Label>Frecuencia</Label>
-                              <Input
-                                value={editingRoute.frequency}
-                                onChange={(e) => setEditingRoute({...editingRoute, frequency: e.target.value})}
-                              />
-                            </div>
-                            <div>
-                              <Label>Horarios</Label>
-                              <Input
-                                value={editingRoute.operatingHours}
-                                onChange={(e) => setEditingRoute({...editingRoute, operatingHours: e.target.value})}
-                              />
-                            </div>
-                            <div>
-                              <Label>Tarifa</Label>
-                              <Input
-                                value={editingRoute.fare}
-                                onChange={(e) => setEditingRoute({...editingRoute, fare: e.target.value})}
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <Label>Descripción</Label>
-                            <Input
-                              value={editingRoute.description}
-                              onChange={(e) => setEditingRoute({...editingRoute, description: e.target.value})}
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button onClick={() => handleSaveRoute(editingRoute)}>
-                              <Save size={16} className="mr-1" />
-                              Guardar Cambios
-                            </Button>
-                            <Button variant="outline" onClick={() => setEditingRoute(null)}>
-                              Cancelar
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
+                      <Card key={route.id} className="p-4">
                         <div className="flex items-start justify-between">
                           <div>
                             <h3 className="font-bold text-lg">{route.name}</h3>
                             <p className="text-gray-600">{route.description}</p>
-                            <div className="mt-2 text-sm text-gray-500">
-                              <p>Frecuencia: {route.frequency}</p>
-                              <p>Horario: {route.operatingHours}</p>
-                              <p>Tarifa: {route.fare}</p>
-                            </div>
+                            {route.route_identification && (
+                              <p className="text-sm text-blue-600">ID: {route.route_identification}</p>
+                            )}
                           </div>
                           <div className="flex gap-2">
                             <Button size="sm" onClick={() => setEditingRoute(route)}>
@@ -595,8 +660,121 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             </Button>
                           </div>
                         </div>
-                      )}
-                    </Card>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="bus-stops">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Agregar Parada de Autobús</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <Label>Nombre de la Parada</Label>
+                      <Input
+                        value={newBusStop.name}
+                        onChange={(e) => setNewBusStop({...newBusStop, name: e.target.value})}
+                        placeholder="Ej: Parada Central"
+                      />
+                    </div>
+                    <div>
+                      <Label>Categoría</Label>
+                      <select 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        value={newBusStop.category}
+                        onChange={(e) => setNewBusStop({...newBusStop, category: e.target.value})}
+                      >
+                        <option value="parada">Parada</option>
+                        <option value="terminal">Terminal</option>
+                        <option value="punto_transferencia">Punto de Transferencia</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label>Latitud</Label>
+                      <Input
+                        value={newBusStop.latitude}
+                        onChange={(e) => setNewBusStop({...newBusStop, latitude: parseFloat(e.target.value) || 0})}
+                        placeholder="11.0000"
+                        type="number"
+                        step="0.0001"
+                      />
+                    </div>
+                    <div>
+                      <Label>Longitud</Label>
+                      <Input
+                        value={newBusStop.longitude}
+                        onChange={(e) => setNewBusStop({...newBusStop, longitude: parseFloat(e.target.value) || 0})}
+                        placeholder="-63.8500"
+                        type="number"
+                        step="0.0001"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>URL de la Imagen</Label>
+                      <Input
+                        value={newBusStop.imageUrl}
+                        onChange={(e) => setNewBusStop({...newBusStop, imageUrl: e.target.value})}
+                        placeholder="https://ejemplo.com/imagen.jpg"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Descripción</Label>
+                      <Input
+                        value={newBusStop.description}
+                        onChange={(e) => setNewBusStop({...newBusStop, description: e.target.value})}
+                        placeholder="Descripción de la parada"
+                      />
+                    </div>
+                  </div>
+                  <Button onClick={handleAddBusStop}>
+                    <Plus size={16} className="mr-1" />
+                    Agregar Parada
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Información - Paradas de Autobús</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {busStops.map((stop) => (
+                      <Card key={stop.id} className="overflow-hidden">
+                        {stop.image_url && (
+                          <img 
+                            src={stop.image_url} 
+                            alt={stop.name} 
+                            className="w-full h-48 object-cover"
+                          />
+                        )}
+                        <CardContent className="p-4">
+                          <h3 className="font-bold text-lg mb-2">{stop.name}</h3>
+                          <p className="text-gray-600 text-sm mb-2">{stop.description}</p>
+                          <div className="flex justify-between items-center text-xs text-gray-500">
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                              {stop.category}
+                            </span>
+                            <Button 
+                              size="sm" 
+                              variant="destructive" 
+                              onClick={() => handleDeleteBusStop(stop.id)}
+                            >
+                              <Trash2 size={14} />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-2">
+                            {stop.latitude?.toFixed(4)}, {stop.longitude?.toFixed(4)}
+                          </p>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 </CardContent>
@@ -862,37 +1040,32 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Galería de Imágenes</CardTitle>
+                  <CardTitle>Galería de Maneiro</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Imagen</TableHead>
-                        <TableHead>Título</TableHead>
-                        <TableHead>Categoría</TableHead>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead>Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {images.map((image) => (
-                        <TableRow key={image.id}>
-                          <TableCell>
-                            <img src={image.url} alt={image.title} className="w-16 h-16 object-cover rounded" />
-                          </TableCell>
-                          <TableCell>{image.title}</TableCell>
-                          <TableCell>{image.category}</TableCell>
-                          <TableCell>{image.description}</TableCell>
-                          <TableCell>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {images.map((image) => (
+                      <Card key={image.id} className="overflow-hidden">
+                        <img 
+                          src={image.url} 
+                          alt={image.title} 
+                          className="w-full h-48 object-cover"
+                        />
+                        <CardContent className="p-4">
+                          <h3 className="font-bold text-lg mb-2">{image.title}</h3>
+                          <p className="text-gray-600 text-sm mb-2">{image.description}</p>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded">
+                              {image.category}
+                            </span>
                             <Button size="sm" variant="destructive" onClick={() => handleDeleteImage(image.id)}>
-                              <Trash2 size={16} />
+                              <Trash2 size={14} />
                             </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -902,16 +1075,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Agregar Parada de Autobús</CardTitle>
+                  <CardTitle>Agregar Punto de Interés</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <Label>Nombre de la Parada</Label>
+                      <Label>Nombre del Punto</Label>
                       <Input
                         value={newPointOfInterest.name}
                         onChange={(e) => setNewPointOfInterest({...newPointOfInterest, name: e.target.value})}
-                        placeholder="Ej: Parada Central"
+                        placeholder="Ej: Centro Comercial"
                       />
                     </div>
                     <div>
@@ -922,10 +1095,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         onChange={(e) => setNewPointOfInterest({...newPointOfInterest, category: e.target.value})}
                       >
                         <option value="">Seleccionar categoría</option>
-                        <option value="Parada Principal">Parada Principal</option>
-                        <option value="Parada Secundaria">Parada Secundaria</option>
-                        <option value="Terminal">Terminal</option>
-                        <option value="Punto de Transferencia">Punto de Transferencia</option>
+                        <option value="Comercial">Comercial</option>
+                        <option value="Turístico">Turístico</option>
+                        <option value="Educativo">Educativo</option>
+                        <option value="Salud">Salud</option>
                       </select>
                     </div>
                     <div>
@@ -953,20 +1126,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <Input
                         value={newPointOfInterest.description}
                         onChange={(e) => setNewPointOfInterest({...newPointOfInterest, description: e.target.value})}
-                        placeholder="Descripción de la parada"
+                        placeholder="Descripción del punto de interés"
                       />
                     </div>
                   </div>
                   <Button onClick={handleAddPointOfInterest}>
                     <Plus size={16} className="mr-1" />
-                    Agregar Parada
+                    Agregar Punto de Interés
                   </Button>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Paradas de Autobús</CardTitle>
+                  <CardTitle>Puntos de Interés</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -985,15 +1158,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                           <TableCell>{poi.name}</TableCell>
                           <TableCell>
                             <span className={`px-2 py-1 rounded text-xs ${
-                              poi.category === 'Terminal' ? 'bg-blue-100 text-blue-800' :
-                              poi.category === 'Parada Principal' ? 'bg-green-100 text-green-800' :
-                              poi.category === 'Parada Secundaria' ? 'bg-yellow-100 text-yellow-800' :
+                              poi.category === 'Turístico' ? 'bg-blue-100 text-blue-800' :
+                              poi.category === 'Comercial' ? 'bg-green-100 text-green-800' :
+                              poi.category === 'Educativo' ? 'bg-yellow-100 text-yellow-800' :
                               'bg-gray-100 text-gray-800'
                             }`}>
                               {poi.category}
                             </span>
                           </TableCell>
-                          <TableCell>{poi.lat.toFixed(4)}, {poi.lng.toFixed(4)}</TableCell>
+                          <TableCell>{poi.lat?.toFixed(4)}, {poi.lng?.toFixed(4)}</TableCell>
                           <TableCell>{poi.description}</TableCell>
                           <TableCell>
                             <Button size="sm" variant="destructive" onClick={() => handleDeletePointOfInterest(poi.id)}>
