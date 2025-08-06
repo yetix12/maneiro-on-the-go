@@ -8,9 +8,11 @@ import type { Tables } from '@/integrations/supabase/types';
 
 type Route = Tables<'bus_routes'>;
 type Stop = Tables<'bus_stops'>;
+type Parada = Tables<'paradas'>;
 
 interface RouteWithStops extends Route {
   stops: Stop[];
+  paradas?: Parada[];
 }
 
 const RouteList = () => {
@@ -30,12 +32,20 @@ const RouteList = () => {
 
         if (routesError) throw routesError;
 
-        // Fetch stops for each route
+        // Fetch stops and paradas for each route
         const routesWithStops: RouteWithStops[] = [];
         
         for (const route of routesData || []) {
+          // Fetch bus_stops
           const { data: stopsData, error: stopsError } = await supabase
             .from('bus_stops')
+            .select('*')
+            .eq('route_id', route.id)
+            .order('stop_order');
+
+          // Fetch paradas
+          const { data: paradasData, error: paradasError } = await supabase
+            .from('paradas')
             .select('*')
             .eq('route_id', route.id)
             .order('stop_order');
@@ -43,10 +53,14 @@ const RouteList = () => {
           if (stopsError) {
             console.error('Error fetching stops:', stopsError);
           }
+          if (paradasError) {
+            console.error('Error fetching paradas:', paradasError);
+          }
 
           routesWithStops.push({
             ...route,
-            stops: stopsData || []
+            stops: stopsData || [],
+            paradas: paradasData || []
           });
         }
 
@@ -180,9 +194,49 @@ const RouteList = () => {
             </div>
           </div>
 
-          {route.stops && route.stops.length > 0 && (
+          {route.paradas && route.paradas.length > 0 && (
             <div className="mb-4">
-              <h4 className="font-semibold mb-2 text-sm">Paradas ({route.stops.length}):</h4>
+              <h4 className="font-semibold mb-3 text-sm">Paradas Detalladas ({route.paradas.length}):</h4>
+              <div className="space-y-3">
+                {route.paradas.map((parada, index) => (
+                  <div key={parada.id} className="bg-gray-50 p-3 rounded-lg border-l-4 border-blue-400">
+                    <div className="flex justify-between items-start mb-2">
+                      <h5 className="font-medium text-sm text-gray-800">{parada.name}</h5>
+                      <Badge variant="outline" className="text-xs">#{parada.stop_order}</Badge>
+                    </div>
+                    {parada.description && (
+                      <p className="text-xs text-gray-600 mb-2">{parada.description}</p>
+                    )}
+                    {parada.address && (
+                      <p className="text-xs text-gray-500 mb-1">📍 {parada.address}</p>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <div className="flex gap-2">
+                        {parada.facilities && parada.facilities.length > 0 && (
+                          <div className="flex gap-1">
+                            {parada.facilities.map((facility, i) => (
+                              <Badge key={i} variant="secondary" className="text-xs px-1 py-0">
+                                {facility}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {parada.accessibility && (
+                        <Badge variant="default" className="text-xs bg-green-100 text-green-800">
+                          ♿ Accesible
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {route.stops && route.stops.length > 0 && (!route.paradas || route.paradas.length === 0) && (
+            <div className="mb-4">
+              <h4 className="font-semibold mb-2 text-sm">Paradas Básicas ({route.stops.length}):</h4>
               <div className="flex flex-wrap gap-2">
                 {route.stops.map((stop) => (
                   <Badge key={stop.id} variant="outline" className="text-xs">
