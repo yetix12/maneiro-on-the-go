@@ -35,13 +35,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [busStops, setBusStops] = useState<any[]>([]);
   const [newBusStop, setNewBusStop] = useState({
     name: '',
-    description: '',
-    imageUrl: '',
-    category: 'parada',
-    latitude: 0,
-    longitude: 0,
-    routeId: '',
-    ubicacion: ''
+    latitude: '',
+    longitude: '',
+    stop_order: '',
+    route_id: ''
   });
 
   const [editingRoute, setEditingRoute] = useState<any>(null);
@@ -104,7 +101,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const loadBusStops = async () => {
     try {
       const { data: busStopsData, error } = await supabase
-        .from('bus_stop_info')
+        .from('bus_stops')
         .select('*');
 
       if (error) throw error;
@@ -435,39 +432,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     saveAdminPointsOfInterest(updatedPoints);
   };
 
-  // Parse ubicacion format: "10°59'11.8"N 63°49'06.8"W"
-  const parseUbicacion = (ubicacion: string) => {
-    const regex = /(\d+)°(\d+)'([\d.]+)"([NS])\s+(\d+)°(\d+)'([\d.]+)"([EW])/;
-    const match = ubicacion.match(regex);
-    
-    if (!match) return null;
-    
-    const [_, latDeg, latMin, latSec, latDir, lngDeg, lngMin, lngSec, lngDir] = match;
-    
-    let latitude = parseInt(latDeg) + parseInt(latMin)/60 + parseFloat(latSec)/3600;
-    let longitude = parseInt(lngDeg) + parseInt(lngMin)/60 + parseFloat(lngSec)/3600;
-    
-    if (latDir === 'S') latitude = -latitude;
-    if (lngDir === 'W') longitude = -longitude;
-    
-    return { latitude, longitude };
-  };
-
   const handleAddBusStop = async () => {
-    if (!newBusStop.name || !newBusStop.ubicacion || !newBusStop.routeId) {
+    if (!newBusStop.name || !newBusStop.latitude || !newBusStop.longitude || !newBusStop.stop_order || !newBusStop.route_id) {
       toast({
         title: "Error",
-        description: "Por favor complete los campos obligatorios (nombre, ubicación y ruta)",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const coordinates = parseUbicacion(newBusStop.ubicacion);
-    if (!coordinates) {
-      toast({
-        title: "Error",
-        description: "Formato de ubicación inválido. Use: 10°59'11.8\"N 63°49'06.8\"W",
+        description: "Por favor complete todos los campos obligatorios (nombre, latitud, longitud, orden de parada y ruta)",
         variant: "destructive"
       });
       return;
@@ -475,15 +444,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
     try {
       const { data, error } = await supabase
-        .from('bus_stop_info')
+        .from('bus_stops')
         .insert([{
           name: newBusStop.name,
-          description: newBusStop.description,
-          image_url: newBusStop.imageUrl,
-          category: newBusStop.category,
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
-          created_by: (await supabase.auth.getUser()).data.user?.id
+          latitude: parseFloat(newBusStop.latitude),
+          longitude: parseFloat(newBusStop.longitude),
+          stop_order: parseInt(newBusStop.stop_order),
+          route_id: newBusStop.route_id
         }])
         .select();
 
@@ -497,13 +464,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
       setNewBusStop({
         name: '',
-        description: '',
-        imageUrl: '',
-        category: 'parada',
-        latitude: 0,
-        longitude: 0,
-        routeId: '',
-        ubicacion: ''
+        latitude: '',
+        longitude: '',
+        stop_order: '',
+        route_id: ''
       });
 
       await loadBusStops();
@@ -520,7 +484,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const handleDeleteBusStop = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('bus_stop_info')
+        .from('bus_stops')
         .delete()
         .eq('id', id);
 
@@ -800,8 +764,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <Label>Ruta</Label>
                       <select 
                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                        value={newBusStop.routeId}
-                        onChange={(e) => setNewBusStop({...newBusStop, routeId: e.target.value})}
+                        value={newBusStop.route_id}
+                        onChange={(e) => setNewBusStop({...newBusStop, route_id: e.target.value})}
                       >
                         <option value="">Seleccionar ruta</option>
                         {routes.map((route) => (
@@ -812,42 +776,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       </select>
                     </div>
                     <div>
-                      <Label>Categoría</Label>
-                      <select 
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                        value={newBusStop.category}
-                        onChange={(e) => setNewBusStop({...newBusStop, category: e.target.value})}
-                      >
-                        <option value="parada">Parada</option>
-                        <option value="terminal">Terminal</option>
-                        <option value="punto_transferencia">Punto de Transferencia</option>
-                      </select>
-                    </div>
-                    <div className="col-span-2">
-                      <Label>Ubicación</Label>
+                      <Label>Orden de Parada</Label>
                       <Input
-                        value={newBusStop.ubicacion}
-                        onChange={(e) => setNewBusStop({...newBusStop, ubicacion: e.target.value})}
-                        placeholder='10°59&apos;11.8"N 63°49&apos;06.8"W'
+                        type="number"
+                        value={newBusStop.stop_order}
+                        onChange={(e) => setNewBusStop({...newBusStop, stop_order: e.target.value})}
+                        placeholder="1, 2, 3..."
+                        min="1"
                       />
                       <p className="text-sm text-muted-foreground mt-1">
-                        Formato: coordenadas de Google Maps (ej: 10°59&apos;11.8"N 63°49&apos;06.8"W)
+                        Orden en que aparece la parada en la ruta
                       </p>
                     </div>
-                    <div className="col-span-2">
-                      <Label>URL de la Imagen</Label>
+                    <div>
+                      <Label>Latitud</Label>
                       <Input
-                        value={newBusStop.imageUrl}
-                        onChange={(e) => setNewBusStop({...newBusStop, imageUrl: e.target.value})}
-                        placeholder="https://ejemplo.com/imagen.jpg"
+                        type="number"
+                        step="0.000001"
+                        value={newBusStop.latitude}
+                        onChange={(e) => setNewBusStop({...newBusStop, latitude: e.target.value})}
+                        placeholder="11.0047"
                       />
                     </div>
-                    <div className="col-span-2">
-                      <Label>Descripción</Label>
+                    <div>
+                      <Label>Longitud</Label>
                       <Input
-                        value={newBusStop.description}
-                        onChange={(e) => setNewBusStop({...newBusStop, description: e.target.value})}
-                        placeholder="Descripción de la parada"
+                        type="number"
+                        step="0.000001"
+                        value={newBusStop.longitude}
+                        onChange={(e) => setNewBusStop({...newBusStop, longitude: e.target.value})}
+                        placeholder="-63.8697"
                       />
                     </div>
                   </div>
@@ -860,41 +818,60 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Información - Paradas de Autobús</CardTitle>
+                  <CardTitle>Paradas de Autobús</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {busStops.map((stop) => (
-                      <Card key={stop.id} className="overflow-hidden">
-                        {stop.image_url && (
-                          <img 
-                            src={stop.image_url} 
-                            alt={stop.name} 
-                            className="w-full h-48 object-cover"
-                          />
-                        )}
-                        <CardContent className="p-4">
-                          <h3 className="font-bold text-lg mb-2">{stop.name}</h3>
-                          <p className="text-gray-600 text-sm mb-2">{stop.description}</p>
-                          <div className="flex justify-between items-center text-xs text-gray-500">
-                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                              {stop.category}
-                            </span>
-                            <Button 
-                              size="sm" 
-                              variant="destructive" 
-                              onClick={() => handleDeleteBusStop(stop.id)}
-                            >
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                          <p className="text-xs text-gray-400 mt-2">
-                            {stop.latitude?.toFixed(4)}, {stop.longitude?.toFixed(4)}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Ruta</TableHead>
+                        <TableHead>Orden</TableHead>
+                        <TableHead>Coordenadas</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {busStops.map((stop) => {
+                        const route = routes.find(r => r.id === stop.route_id);
+                        return (
+                          <TableRow key={stop.id}>
+                            <TableCell className="font-medium">{stop.name}</TableCell>
+                            <TableCell>
+                              {route ? (
+                                <span className="flex items-center gap-2">
+                                  <div 
+                                    className="w-3 h-3 rounded-full" 
+                                    style={{ backgroundColor: route.color }}
+                                  />
+                                  {route.route_identification || route.name}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">Sin ruta</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                                #{stop.stop_order}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {stop.latitude?.toFixed(4)}, {stop.longitude?.toFixed(4)}
+                            </TableCell>
+                            <TableCell>
+                              <Button 
+                                size="sm" 
+                                variant="destructive" 
+                                onClick={() => handleDeleteBusStop(stop.id)}
+                              >
+                                <Trash2 size={14} />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </div>
