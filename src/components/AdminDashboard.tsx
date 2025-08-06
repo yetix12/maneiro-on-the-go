@@ -80,7 +80,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     name: '',
     frequency: '',
     operatingHours: '',
-    fare: '',
+    fare: '', // Este ahora será "Ruta corta"
+    longRoute: '', // Nuevo campo para "Ruta larga expresado en Bs"
+    routeIdentification: '', // Nuevo campo para "Identificación de la ruta"
     description: '',
     color: '#3B82F6'
   });
@@ -339,7 +341,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   const handleAddRoute = () => {
-    if (!newRoute.name || !newRoute.frequency || !newRoute.operatingHours || !newRoute.fare) {
+    if (!newRoute.name || !newRoute.frequency || !newRoute.operatingHours || !newRoute.fare || !newRoute.longRoute || !newRoute.routeIdentification) {
       toast({
         title: "Error",
         description: "Por favor complete todos los campos obligatorios",
@@ -354,6 +356,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       frequency: newRoute.frequency,
       operatingHours: newRoute.operatingHours,
       fare: newRoute.fare,
+      longRoute: newRoute.longRoute,
+      routeIdentification: newRoute.routeIdentification,
       description: newRoute.description,
       color: newRoute.color
     };
@@ -364,6 +368,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       frequency: '',
       operatingHours: '',
       fare: '',
+      longRoute: '',
+      routeIdentification: '',
       description: '',
       color: '#3B82F6'
     });
@@ -456,11 +462,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       />
                     </div>
                     <div>
-                      <Label>Tarifa</Label>
+                      <Label>Ruta corta</Label>
                       <Input
                         value={newRoute.fare}
                         onChange={(e) => setNewRoute({...newRoute, fare: e.target.value})}
                         placeholder="Ej: Bs. 2.50"
+                      />
+                    </div>
+                    <div>
+                      <Label>Ruta larga expresado en Bs</Label>
+                      <Input
+                        value={newRoute.longRoute}
+                        onChange={(e) => setNewRoute({...newRoute, longRoute: e.target.value})}
+                        placeholder="Ej: Bs. 4.00"
+                      />
+                    </div>
+                    <div>
+                      <Label>Identificación de la ruta</Label>
+                      <Input
+                        value={newRoute.routeIdentification}
+                        onChange={(e) => setNewRoute({...newRoute, routeIdentification: e.target.value})}
+                        placeholder="Ej: Ruta 4a"
                       />
                     </div>
                     <div className="col-span-2">
