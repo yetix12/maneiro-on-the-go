@@ -322,6 +322,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      test_admin_access: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          test_name: string
+          result: string
+          details: Json
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

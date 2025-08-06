@@ -9,6 +9,7 @@ import { LogOut, Plus, Edit, Trash2, Save, MapPin, Image, Users, Map, Upload, Ca
 import { getAdminPointsOfInterest, saveAdminPointsOfInterest } from './map/mapData';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import AdminDiagnostic from './AdminDiagnostic';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -522,8 +523,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       </div>
 
       <div className="p-6">
-        <Tabs defaultValue="routes" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+        <Tabs defaultValue="diagnostic" className="w-full">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="diagnostic" className="flex items-center gap-2">
+              🔧 Diagnóstico
+            </TabsTrigger>
             <TabsTrigger value="routes" className="flex items-center gap-2">
               <MapPin size={16} />
               Rutas
@@ -545,6 +549,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               Mapa
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="diagnostic">
+            <AdminDiagnostic />
+          </TabsContent>
 
           <TabsContent value="routes">
             <div className="space-y-6">
