@@ -14,16 +14,454 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bus_routes: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          long_route: string | null
+          name: string
+          parroquia_id: string | null
+          route_identification: string | null
+          short_route: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          long_route?: string | null
+          name: string
+          parroquia_id?: string | null
+          route_identification?: string | null
+          short_route?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          long_route?: string | null
+          name?: string
+          parroquia_id?: string | null
+          route_identification?: string | null
+          short_route?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bus_routes_parroquia_id_fkey"
+            columns: ["parroquia_id"]
+            isOneToOne: false
+            referencedRelation: "parroquias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bus_stop_info: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      bus_stops: {
+        Row: {
+          created_at: string | null
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          route_id: string | null
+          stop_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          route_id?: string | null
+          stop_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          route_id?: string | null
+          stop_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bus_stops_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "bus_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      galeria_maneiro: {
+        Row: {
+          categoria: string | null
+          created_at: string | null
+          created_by: string | null
+          descripcion: string | null
+          id: string
+          imagen_url: string | null
+          parroquia_id: string | null
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          descripcion?: string | null
+          id?: string
+          imagen_url?: string | null
+          parroquia_id?: string | null
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          descripcion?: string | null
+          id?: string
+          imagen_url?: string | null
+          parroquia_id?: string | null
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "galeria_maneiro_parroquia_id_fkey"
+            columns: ["parroquia_id"]
+            isOneToOne: false
+            referencedRelation: "parroquias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      paradas: {
+        Row: {
+          accessibility: boolean | null
+          address: string | null
+          created_at: string | null
+          description: string | null
+          facilities: string[] | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          route_id: string | null
+          stop_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          accessibility?: boolean | null
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          facilities?: string[] | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          route_id?: string | null
+          stop_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          accessibility?: boolean | null
+          address?: string | null
+          created_at?: string | null
+          description?: string | null
+          facilities?: string[] | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          route_id?: string | null
+          stop_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      parroquias: {
+        Row: {
+          created_at: string | null
+          descripcion: string | null
+          estado: string | null
+          id: string
+          is_active: boolean | null
+          municipio: string | null
+          nombre: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          descripcion?: string | null
+          estado?: string | null
+          id?: string
+          is_active?: boolean | null
+          municipio?: string | null
+          nombre: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          descripcion?: string | null
+          estado?: string | null
+          id?: string
+          is_active?: boolean | null
+          municipio?: string | null
+          nombre?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      points_of_interest: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          parroquia_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          parroquia_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          parroquia_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "points_of_interest_parroquia_id_fkey"
+            columns: ["parroquia_id"]
+            isOneToOne: false
+            referencedRelation: "parroquias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          direccion: string | null
+          full_name: string | null
+          id: string
+          parroquia_id: string | null
+          phone: string | null
+          updated_at: string | null
+          user_type: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          direccion?: string | null
+          full_name?: string | null
+          id: string
+          parroquia_id?: string | null
+          phone?: string | null
+          updated_at?: string | null
+          user_type?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          direccion?: string | null
+          full_name?: string | null
+          id?: string
+          parroquia_id?: string | null
+          phone?: string | null
+          updated_at?: string | null
+          user_type?: string | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_parroquia_id_fkey"
+            columns: ["parroquia_id"]
+            isOneToOne: false
+            referencedRelation: "parroquias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          parroquia_id: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          parroquia_id?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          parroquia_id?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_parroquia_id_fkey"
+            columns: ["parroquia_id"]
+            isOneToOne: false
+            referencedRelation: "parroquias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          capacity: number | null
+          created_at: string | null
+          current_latitude: number | null
+          current_longitude: number | null
+          driver_id: string | null
+          id: string
+          last_updated: string | null
+          license_plate: string
+          model: string | null
+          route_id: string | null
+          status: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string | null
+          current_latitude?: number | null
+          current_longitude?: number | null
+          driver_id?: string | null
+          id?: string
+          last_updated?: string | null
+          license_plate: string
+          model?: string | null
+          route_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string | null
+          current_latitude?: number | null
+          current_longitude?: number | null
+          driver_id?: string | null
+          id?: string
+          last_updated?: string | null
+          license_plate?: string
+          model?: string | null
+          route_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "bus_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_admin_parroquia_id: { Args: never; Returns: string }
+      get_parroquia_statistics: {
+        Args: { _parroquia_id: string }
+        Returns: {
+          total_conductores: number
+          total_paradas: number
+          total_pasajeros: number
+          total_rutas: number
+          total_usuarios: number
+        }[]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin_general: { Args: never; Returns: boolean }
+      is_admin_parroquia: { Args: { _parroquia_id: string }; Returns: boolean }
+      is_any_admin_parroquia: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin_general" | "admin_parroquia" | "driver" | "passenger"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +588,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin_general", "admin_parroquia", "driver", "passenger"],
+    },
   },
 } as const
