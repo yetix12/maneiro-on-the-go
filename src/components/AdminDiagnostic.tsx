@@ -43,13 +43,41 @@ const AdminDiagnostic: React.FC = () => {
         }
       ];
 
-      // Test 2: Backend authentication tests
-      const { data: backendTests, error: backendError } = await supabase
-        .rpc('test_admin_access');
+      // Test 2: Backend authentication tests using available functions
+      const backendTests: DiagnosticResult[] = [];
+      
+      try {
+        const { data: isAdminGeneral, error: adminError } = await supabase
+          .rpc('is_admin_general');
+        
+        backendTests.push({
+          test_name: 'is_admin_general',
+          result: isAdminGeneral ? 'PASS' : 'FAIL',
+          details: { is_admin: isAdminGeneral, error: adminError?.message }
+        });
+      } catch (err: any) {
+        backendTests.push({
+          test_name: 'is_admin_general',
+          result: 'FAIL',
+          details: { error: err.message }
+        });
+      }
 
-      if (backendError) {
-        console.error('Backend test error:', backendError);
-        setError(`Error en pruebas backend: ${backendError.message}`);
+      try {
+        const { data: isAnyAdminParroquia, error: parroquiaError } = await supabase
+          .rpc('is_any_admin_parroquia');
+        
+        backendTests.push({
+          test_name: 'is_any_admin_parroquia',
+          result: isAnyAdminParroquia ? 'PASS' : 'FAIL',
+          details: { is_admin_parroquia: isAnyAdminParroquia, error: parroquiaError?.message }
+        });
+      } catch (err: any) {
+        backendTests.push({
+          test_name: 'is_any_admin_parroquia',
+          result: 'FAIL',
+          details: { error: err.message }
+        });
       }
 
       // Test 3: Try to access admin-only tables
@@ -119,7 +147,7 @@ const AdminDiagnostic: React.FC = () => {
       // Combine all results
       const allResults = [
         ...frontendTests,
-        ...(backendTests || []),
+        ...backendTests,
         ...tableTests
       ];
 

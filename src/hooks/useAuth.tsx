@@ -9,7 +9,14 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, userData: { username: string; full_name: string; user_type?: string }) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, userData: { 
+    username: string; 
+    full_name: string; 
+    user_type?: string;
+    phone?: string;
+    parroquia_id?: string;
+    direccion?: string;
+  }) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -153,7 +160,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const signUp = async (email: string, password: string, userData: { username: string; full_name: string; user_type?: string }) => {
+  const signUp = async (email: string, password: string, userData: { 
+    username: string; 
+    full_name: string; 
+    user_type?: string;
+    phone?: string;
+    parroquia_id?: string;
+    direccion?: string;
+  }) => {
     setLoading(true);
     
     try {

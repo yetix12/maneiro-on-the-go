@@ -1,11 +1,19 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertCircle, UserPlus } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertCircle, UserPlus, Phone, MapPin, Home } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Parroquia {
+  id: string;
+  nombre: string;
+  municipio: string | null;
+}
 
 interface RegisterDialogProps {
   disabled?: boolean;
@@ -15,21 +23,52 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
   const { signUp, loading } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
   const [error, setError] = useState('');
+  const [parroquias, setParroquias] = useState<Parroquia[]>([]);
+  const [loadingParroquias, setLoadingParroquias] = useState(false);
   
   const [registerData, setRegisterData] = useState({
     name: '',
     email: '',
     username: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    phone: '',
+    parroquia_id: '',
+    direccion: ''
   });
 
+  // Cargar parroquias cuando se abre el diálogo
+  useEffect(() => {
+    if (showRegister) {
+      loadParroquias();
+    }
+  }, [showRegister]);
+
+  const loadParroquias = async () => {
+    setLoadingParroquias(true);
+    try {
+      const { data, error } = await supabase
+        .from('parroquias')
+        .select('id, nombre, municipio')
+        .eq('is_active', true)
+        .order('nombre');
+      
+      if (error) {
+        console.error('Error loading parroquias:', error);
+      } else {
+        setParroquias(data || []);
+      }
+    } catch (err) {
+      console.error('Error loading parroquias:', err);
+    } finally {
+      setLoadingParroquias(false);
+    }
+  };
+
   const validateEmail = (email: string) => {
-    // Validación más permisiva para emails como pakito@email.com
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const trimmedEmail = email.trim().toLowerCase();
     
-    // Verificaciones básicas
     if (!trimmedEmail || trimmedEmail.length < 5) return false;
     if (!emailRegex.test(trimmedEmail)) return false;
     if (trimmedEmail.indexOf('@') === -1) return false;
@@ -38,12 +77,24 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
     return true;
   };
 
+  const validatePhone = (phone: string) => {
+    // Acepta números con o sin código de país, espacios o guiones
+    const phoneRegex = /^[\d\s\-+()]{7,20}$/;
+    return phone === '' || phoneRegex.test(phone.trim());
+  };
+
   const handleRegister = async () => {
     setError('');
     
-    // Validar que todos los campos estén llenos
+    // Validar campos obligatorios
     if (!registerData.email || !registerData.password || !registerData.name || !registerData.username) {
-      setError('Todos los campos son obligatorios');
+      setError('Nombre, email, usuario y contraseña son obligatorios');
+      return;
+    }
+
+    // Validar parroquia
+    if (!registerData.parroquia_id) {
+      setError('Por favor selecciona tu parroquia de residencia');
       return;
     }
 
@@ -51,6 +102,12 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
     const emailTrimmed = registerData.email.trim().toLowerCase();
     if (!validateEmail(emailTrimmed)) {
       setError('Por favor ingresa un email válido (ejemplo: usuario@correo.com)');
+      return;
+    }
+
+    // Validar teléfono si se proporciona
+    if (registerData.phone && !validatePhone(registerData.phone)) {
+      setError('Por favor ingresa un número de teléfono válido');
       return;
     }
 
@@ -69,15 +126,17 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
       const { error } = await signUp(emailTrimmed, registerData.password, {
         username: registerData.username.trim(),
         full_name: registerData.name.trim(),
-        user_type: 'passenger'
+        user_type: 'passenger',
+        phone: registerData.phone.trim() || undefined,
+        parroquia_id: registerData.parroquia_id,
+        direccion: registerData.direccion.trim() || undefined
       });
       
       if (error) {
         console.error('Registration error details:', error);
         
-        // Manejar errores específicos de Supabase
         if (error.message.includes('email_address_invalid') || error.message.includes('Email address') && error.message.includes('invalid')) {
-          setError('El formato del email no es válido. Verifica que sea un correo electrónico real (ej: usuario@gmail.com)');
+          setError('El formato del email no es válido. Verifica que sea un correo electrónico real');
         } else if (error.message.includes('User already registered') || error.message.includes('already registered')) {
           setError('Este email ya está registrado. Intenta iniciar sesión.');
         } else if (error.message.includes('Password should be at least')) {
@@ -89,13 +148,7 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
         }
       } else {
         setShowRegister(false);
-        setRegisterData({
-          name: '',
-          email: '',
-          username: '',
-          password: '',
-          confirmPassword: ''
-        });
+        resetForm();
       }
     } catch (err) {
       console.error('Registration error:', err);
@@ -109,7 +162,10 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
       email: '',
       username: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      phone: '',
+      parroquia_id: '',
+      direccion: ''
     });
     setError('');
   };
@@ -125,13 +181,14 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
           Registrarse como Pasajero
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Registro de Pasajero</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Nombre completo */}
           <div>
-            <Label htmlFor="name">Nombre completo</Label>
+            <Label htmlFor="name">Nombre completo *</Label>
             <Input
               id="name"
               value={registerData.name}
@@ -140,8 +197,10 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
               required
             />
           </div>
+
+          {/* Email */}
           <div>
-            <Label htmlFor="reg-email">Email</Label>
+            <Label htmlFor="reg-email">Email *</Label>
             <Input
               id="reg-email"
               type="email"
@@ -151,18 +210,74 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
               required
             />
           </div>
+
+          {/* Usuario */}
           <div>
-            <Label htmlFor="reg-username">Usuario</Label>
+            <Label htmlFor="reg-username">Nombre de usuario *</Label>
             <Input
               id="reg-username"
               value={registerData.username}
               onChange={(e) => setRegisterData({...registerData, username: e.target.value})}
-              placeholder="Nombre de usuario"
+              placeholder="Nombre de usuario único"
               required
             />
           </div>
+
+          {/* Teléfono */}
           <div>
-            <Label htmlFor="reg-password">Contraseña</Label>
+            <Label htmlFor="phone" className="flex items-center gap-2">
+              <Phone size={14} />
+              Teléfono
+            </Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={registerData.phone}
+              onChange={(e) => setRegisterData({...registerData, phone: e.target.value})}
+              placeholder="+58 412 123 4567"
+            />
+          </div>
+
+          {/* Parroquia */}
+          <div>
+            <Label htmlFor="parroquia" className="flex items-center gap-2">
+              <MapPin size={14} />
+              Parroquia de residencia *
+            </Label>
+            <Select
+              value={registerData.parroquia_id}
+              onValueChange={(value) => setRegisterData({...registerData, parroquia_id: value})}
+            >
+              <SelectTrigger id="parroquia">
+                <SelectValue placeholder={loadingParroquias ? "Cargando..." : "Selecciona tu parroquia"} />
+              </SelectTrigger>
+              <SelectContent>
+                {parroquias.map((parroquia) => (
+                  <SelectItem key={parroquia.id} value={parroquia.id}>
+                    {parroquia.nombre} {parroquia.municipio ? `(${parroquia.municipio})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Dirección */}
+          <div>
+            <Label htmlFor="direccion" className="flex items-center gap-2">
+              <Home size={14} />
+              Dirección
+            </Label>
+            <Input
+              id="direccion"
+              value={registerData.direccion}
+              onChange={(e) => setRegisterData({...registerData, direccion: e.target.value})}
+              placeholder="Tu dirección de residencia"
+            />
+          </div>
+
+          {/* Contraseña */}
+          <div>
+            <Label htmlFor="reg-password">Contraseña *</Label>
             <Input
               id="reg-password"
               type="password"
@@ -172,8 +287,10 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
               required
             />
           </div>
+
+          {/* Confirmar contraseña */}
           <div>
-            <Label htmlFor="confirm-password">Confirmar contraseña</Label>
+            <Label htmlFor="confirm-password">Confirmar contraseña *</Label>
             <Input
               id="confirm-password"
               type="password"
@@ -183,15 +300,23 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
               required
             />
           </div>
+
+          {/* Error */}
           {error && (
             <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-md">
-              <AlertCircle size={16} />
-              {error}
+              <AlertCircle size={16} className="flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
+
+          {/* Botón de registro */}
           <Button onClick={handleRegister} className="w-full" disabled={loading}>
             {loading ? 'Registrando...' : 'Registrarse'}
           </Button>
+
+          <p className="text-xs text-muted-foreground text-center">
+            * Campos obligatorios
+          </p>
         </div>
       </DialogContent>
     </Dialog>

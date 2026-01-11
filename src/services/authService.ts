@@ -20,7 +20,14 @@ export interface AuthUser {
 
 export const authService = {
   // Sign up new user
-  signUp: async (email: string, password: string, userData: { username: string; full_name: string; user_type?: string }) => {
+  signUp: async (email: string, password: string, userData: { 
+    username: string; 
+    full_name: string; 
+    user_type?: string;
+    phone?: string;
+    parroquia_id?: string;
+    direccion?: string;
+  }) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -28,7 +35,10 @@ export const authService = {
         data: {
           username: userData.username,
           full_name: userData.full_name,
-          user_type: userData.user_type || 'passenger'
+          user_type: userData.user_type || 'passenger',
+          phone: userData.phone || null,
+          parroquia_id: userData.parroquia_id || null,
+          direccion: userData.direccion || null
         },
         emailRedirectTo: `${window.location.origin}/`
       }
