@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, Mail, Lock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import RegisterDialog from './RegisterDialog';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -33,20 +34,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     setIsSigningIn(false);
   };
 
-  const handlePassengerLogin = async () => {
-    setIsSigningIn(true);
-    setError('');
-
-    const { error } = await signIn('pablo@gmail.com', '12345678');
-    
-    if (error) {
-      setError('Error al acceder como pasajero');
-    } else {
-      onSuccess?.();
-    }
-    
-    setIsSigningIn(false);
-  };
 
   return (
     <form onSubmit={handleLogin} className="space-y-4">
@@ -103,20 +90,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-background px-2 text-muted-foreground">
-            O
+            ¿Eres pasajero?
           </span>
         </div>
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        disabled={isSigningIn}
-        onClick={handlePassengerLogin}
-      >
-        {isSigningIn ? 'Accediendo...' : 'Pasajero'}
-      </Button>
+      <RegisterDialog disabled={isSigningIn} />
     </form>
   );
 };
