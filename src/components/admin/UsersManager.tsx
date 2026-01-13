@@ -89,11 +89,38 @@ const UsersManager: React.FC = () => {
     }
   };
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email.trim());
+  };
+
   const handleAddUser = async () => {
-    if (!newUser.name || !newUser.email || !newUser.password) {
+    const trimmedEmail = newUser.email.trim();
+    const trimmedName = newUser.name.trim();
+    const trimmedPassword = newUser.password;
+
+    if (!trimmedName || !trimmedEmail || !trimmedPassword) {
       toast({
         title: "Error",
         description: "Nombre, email y contraseña son obligatorios",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!validateEmail(trimmedEmail)) {
+      toast({
+        title: "Error",
+        description: "El formato del email no es válido",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (trimmedPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "La contraseña debe tener al menos 6 caracteres",
         variant: "destructive"
       });
       return;
@@ -113,14 +140,14 @@ const UsersManager: React.FC = () => {
       setLoading(true);
       
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUser.email,
-        password: newUser.password,
+        email: trimmedEmail,
+        password: trimmedPassword,
         options: {
           data: {
-            username: newUser.username || newUser.email.split('@')[0],
-            full_name: newUser.name,
+            username: newUser.username.trim() || trimmedEmail.split('@')[0],
+            full_name: trimmedName,
             user_type: newUser.user_type,
-            phone: newUser.phone || null,
+            phone: newUser.phone.trim() || null,
             parroquia_id: newUser.parroquia_id || null
           },
           emailRedirectTo: `${window.location.origin}/`
