@@ -34,6 +34,24 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const fetchUserData = async (user: User) => {
+  // Fetch profile and roles in parallel
+  const [profileResult, rolesResult] = await Promise.all([
+    authService.getUserProfile(user.id),
+    authService.getUserRoles(user.id)
+  ]);
+
+  if (profileResult.error) {
+    console.error('Error fetching user profile:', profileResult.error);
+  }
+  if (rolesResult.error) {
+    console.error('Error fetching user roles:', rolesResult.error);
+  }
+
+  // Format auth user with profile and roles
+  return authService.formatAuthUser(user, profileResult.profile, rolesResult.roles);
+};
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -49,24 +67,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (session?.user) {
           // Defer async operations to prevent deadlock
           setTimeout(() => {
-            authService.getUserProfile(session.user.id).then(({ profile, error }) => {
-              if (error) {
-                console.error('Error fetching user profile:', error);
-                // Even if profile fetch fails, use metadata from auth.users
-                const authUser = authService.formatAuthUser(session.user, null);
-                console.log('Using fallback auth user:', authUser);
-                setUser(authUser);
-              } else {
-                const authUser = authService.formatAuthUser(session.user, profile);
-                console.log('Using profile-based auth user:', authUser);
-                setUser(authUser);
-              }
+            fetchUserData(session.user).then(authUser => {
+              console.log('Auth user with roles:', authUser);
+              setUser(authUser);
               setLoading(false);
             }).catch(err => {
-              console.error('Unexpected error fetching profile:', err);
-              // Always fallback to user metadata
-              const authUser = authService.formatAuthUser(session.user, null);
-              console.log('Using error fallback auth user:', authUser);
+              console.error('Unexpected error fetching user data:', err);
+              const authUser = authService.formatAuthUser(session.user, null, []);
               setUser(authUser);
               setLoading(false);
             });
@@ -87,25 +94,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
       
       if (session?.user) {
-        authService.getUserProfile(session.user.id).then(({ profile, error }) => {
-          if (error) {
-            console.error('Error fetching user profile on init:', error);
-            // Even if profile fetch fails, use metadata from auth.users
-            const authUser = authService.formatAuthUser(session.user, null);
-            console.log('Using fallback auth user on init:', authUser);
-            setUser(authUser);
-          } else {
-            const authUser = authService.formatAuthUser(session.user, profile);
-            console.log('Using profile-based auth user on init:', authUser);
-            setUser(authUser);
-          }
+        fetchUserData(session.user).then(authUser => {
+          console.log('Auth user on init with roles:', authUser);
+          setUser(authUser);
           setSession(session);
           setLoading(false);
         }).catch(err => {
           console.error('Unexpected error on init:', err);
-          // Always fallback to user metadata
-          const authUser = authService.formatAuthUser(session.user, null);
-          console.log('Using error fallback auth user on init:', authUser);
+          const authUser = authService.formatAuthUser(session.user, null, []);
           setUser(authUser);
           setSession(session);
           setLoading(false);
@@ -130,7 +126,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (error) {
         console.error('Sign in error:', error);
         
-        // Manejar errores específicos de inicio de sesión
         if (error.message.includes('Invalid login credentials')) {
           toast.error('Email o contraseña incorrectos');
         } else if (error.message.includes('Email not confirmed')) {
@@ -141,7 +136,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           toast.error(error.message || 'Error al iniciar sesión');
         }
         
-        // Mantener en la pantalla de login en caso de error
         setUser(null);
         setSession(null);
       } else {
@@ -176,7 +170,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (error) {
         console.error('Sign up error:', error);
         
-        // Manejar errores específicos de registro
         if (error.message.includes('Email address') && error.message.includes('invalid')) {
           toast.error('El formato del email no es válido');
         } else if (error.message.includes('User already registered')) {
@@ -201,7 +194,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signOut = async () => {
-    // Si no hay sesión activa, solo limpiar el estado local
     if (!session) {
       setUser(null);
       setSession(null);
@@ -212,10 +204,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const { error } = await authService.signOut();
     if (error) {
       console.error('Sign out error:', error);
-      // Incluso si hay error, limpiar el estado local
       setUser(null);
       setSession(null);
-      // Solo mostrar error si no es de sesión perdida
       if (!error.message?.includes('Auth session missing')) {
         toast.error('Error al cerrar sesión');
       } else {
