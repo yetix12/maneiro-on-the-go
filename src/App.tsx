@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import LoginScreen from "./components/LoginScreen";
 import DriverDashboard from "./components/DriverDashboard";
 import AdminDashboard from "./components/AdminDashboard";
+import ParishAdminDashboard from "./components/parish-admin/ParishAdminDashboard";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -28,9 +29,14 @@ const AppContent = () => {
     );
   }
 
-  // Si es administrador, mostrar dashboard del administrador
+  // Si es administrador general, mostrar dashboard del administrador
   if (user && user.type === 'admin') {
     return <AdminDashboard onLogout={signOut} />;
+  }
+
+  // Si es administrador de parroquia, mostrar dashboard de parroquia
+  if (user && user.type === 'admin_parroquia') {
+    return <ParishAdminDashboard onLogout={signOut} parroquiaId={user.parroquia_id} />;
   }
 
   // Si es conductor, mostrar dashboard del conductor
