@@ -38,14 +38,15 @@ const UsersManager: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<User>>({});
   
-  // New user form for creating drivers
+  // New user form
   const [newUser, setNewUser] = useState({
     name: '',
     username: '',
     email: '',
     password: '',
     phone: '',
-    parroquia_id: ''
+    parroquia_id: '',
+    user_type: 'passenger' as 'passenger' | 'driver' | 'admin_parroquia'
   });
 
   useEffect(() => {
@@ -88,11 +89,21 @@ const UsersManager: React.FC = () => {
     }
   };
 
-  const handleAddDriver = async () => {
+  const handleAddUser = async () => {
     if (!newUser.name || !newUser.email || !newUser.password) {
       toast({
         title: "Error",
         description: "Nombre, email y contraseña son obligatorios",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Admin de parroquia requiere parroquia
+    if (newUser.user_type === 'admin_parroquia' && !newUser.parroquia_id) {
+      toast({
+        title: "Error",
+        description: "Debe seleccionar una parroquia para el administrador",
         variant: "destructive"
       });
       return;
@@ -108,7 +119,7 @@ const UsersManager: React.FC = () => {
           data: {
             username: newUser.username || newUser.email.split('@')[0],
             full_name: newUser.name,
-            user_type: 'driver',
+            user_type: newUser.user_type,
             phone: newUser.phone || null,
             parroquia_id: newUser.parroquia_id || null
           },
@@ -118,13 +129,34 @@ const UsersManager: React.FC = () => {
 
       if (authError) throw authError;
 
-      toast({ title: "Éxito", description: "Conductor creado exitosamente" });
-      setNewUser({ name: '', username: '', email: '', password: '', phone: '', parroquia_id: '' });
+      // Si es admin_parroquia, agregar rol en user_roles
+      if (newUser.user_type === 'admin_parroquia' && authData.user) {
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role: 'admin_parroquia' as const,
+            parroquia_id: newUser.parroquia_id
+          });
+
+        if (roleError) {
+          console.error('Error al asignar rol:', roleError);
+        }
+      }
+
+      const typeLabels: Record<string, string> = {
+        passenger: 'Pasajero',
+        driver: 'Conductor',
+        admin_parroquia: 'Administrador de Parroquia'
+      };
+
+      toast({ title: "Éxito", description: `${typeLabels[newUser.user_type]} creado exitosamente` });
+      setNewUser({ name: '', username: '', email: '', password: '', phone: '', parroquia_id: '', user_type: 'passenger' });
       loadData();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "No se pudo crear el conductor",
+        description: error.message || "No se pudo crear el usuario",
         variant: "destructive"
       });
     } finally {
@@ -220,21 +252,53 @@ const UsersManager: React.FC = () => {
     }
   };
 
+  const getUserTypeCreateLabel = () => {
+    switch (newUser.user_type) {
+      case 'passenger': return 'Pasajero';
+      case 'driver': return 'Conductor';
+      case 'admin_parroquia': return 'Admin de Parroquia';
+      default: return 'Usuario';
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Create Driver Form */}
+      {/* Create User Form */}
       <Card>
         <CardHeader>
-          <CardTitle>Crear Nuevo Conductor</CardTitle>
+          <CardTitle>Crear Nuevo Usuario</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Tipo de usuario selector */}
+            <div className="md:col-span-3">
+              <Label>Tipo de Usuario *</Label>
+              <Select
+                value={newUser.user_type}
+                onValueChange={(value: 'passenger' | 'driver' | 'admin_parroquia') => 
+                  setNewUser({ ...newUser, user_type: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="passenger">Pasajero</SelectItem>
+                  <SelectItem value="driver">Conductor</SelectItem>
+                  <SelectItem value="admin_parroquia">Administrador de Parroquia</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Nota: Los Administradores Generales solo pueden ser creados desde la base de datos.
+              </p>
+            </div>
+            
             <div>
               <Label>Nombre Completo *</Label>
               <Input
                 value={newUser.name}
                 onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                placeholder="Nombre del conductor"
+                placeholder="Nombre del usuario"
               />
             </div>
             <div>
@@ -264,7 +328,7 @@ const UsersManager: React.FC = () => {
               />
             </div>
             <div>
-              <Label>Parroquia</Label>
+              <Label>Parroquia {newUser.user_type === 'admin_parroquia' ? '*' : ''}</Label>
               <Select
                 value={newUser.parroquia_id}
                 onValueChange={(value) => setNewUser({ ...newUser, parroquia_id: value })}
@@ -280,9 +344,9 @@ const UsersManager: React.FC = () => {
               </Select>
             </div>
             <div className="flex items-end">
-              <Button onClick={handleAddDriver} disabled={loading} className="w-full">
+              <Button onClick={handleAddUser} disabled={loading} className="w-full">
                 <Plus size={16} className="mr-2" />
-                Crear Conductor
+                Crear {getUserTypeCreateLabel()}
               </Button>
             </div>
           </div>
