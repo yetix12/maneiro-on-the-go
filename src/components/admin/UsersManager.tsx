@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2, Save, X, Search } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Plus, Edit, Trash2, Save, X, Search, Car } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -27,16 +28,40 @@ interface Parroquia {
   nombre: string;
 }
 
+interface Vehicle {
+  id: string;
+  license_plate: string;
+  model: string | null;
+  driver_id: string | null;
+}
+
+interface Route {
+  id: string;
+  name: string;
+}
+
 const UsersManager: React.FC = () => {
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [parroquias, setParroquias] = useState<Parroquia[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterParroquia, setFilterParroquia] = useState<string>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<User>>({});
+  const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
+  const [showCreateVehicle, setShowCreateVehicle] = useState(false);
+  const [newVehicle, setNewVehicle] = useState({
+    license_plate: '',
+    model: '',
+    capacity: '30',
+    route_id: ''
+  });
   
   // New user form
   const [newUser, setNewUser] = useState({
@@ -56,28 +81,26 @@ const UsersManager: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [usersRes, parroquiasRes, vehiclesRes, routesRes] = await Promise.all([
+        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+        supabase.from('parroquias').select('id, nombre').eq('is_active', true),
+        supabase.from('vehicles').select('id, license_plate, model, driver_id'),
+        supabase.from('bus_routes').select('id, name').eq('is_active', true)
+      ]);
 
-      if (usersError) throw usersError;
-
-      const { data: parroquiasData, error: parroquiasError } = await supabase
-        .from('parroquias')
-        .select('id, nombre')
-        .eq('is_active', true);
-
-      if (parroquiasError) throw parroquiasError;
+      if (usersRes.error) throw usersRes.error;
+      if (parroquiasRes.error) throw parroquiasRes.error;
 
       // Enrich users with parroquia name
-      const enrichedUsers = (usersData || []).map(user => {
-        const parroquia = parroquiasData?.find(p => p.id === user.parroquia_id);
+      const enrichedUsers = (usersRes.data || []).map(user => {
+        const parroquia = parroquiasRes.data?.find(p => p.id === user.parroquia_id);
         return { ...user, parroquia };
       });
 
       setUsers(enrichedUsers);
-      setParroquias(parroquiasData || []);
+      setParroquias(parroquiasRes.data || []);
+      setVehicles(vehiclesRes.data || []);
+      setRoutes(routesRes.data || []);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -178,6 +201,13 @@ const UsersManager: React.FC = () => {
       };
 
       toast({ title: "Éxito", description: `${typeLabels[newUser.user_type]} creado exitosamente` });
+      
+      // Si es conductor, abrir diálogo para asignar vehículo
+      if (newUser.user_type === 'driver' && authData.user) {
+        setSelectedDriverId(authData.user.id);
+        setVehicleDialogOpen(true);
+      }
+      
       setNewUser({ name: '', username: '', email: '', password: '', phone: '', parroquia_id: '', user_type: 'passenger' });
       loadData();
     } catch (error: any) {
@@ -200,18 +230,44 @@ const UsersManager: React.FC = () => {
     if (!editingId) return;
 
     try {
+      const updateData: any = {
+        full_name: editData.full_name,
+        username: editData.username,
+        phone: editData.phone,
+        user_type: editData.user_type,
+        parroquia_id: editData.parroquia_id || null
+      };
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          full_name: editData.full_name,
-          username: editData.username,
-          phone: editData.phone,
-          user_type: editData.user_type,
-          parroquia_id: editData.parroquia_id
-        })
+        .update(updateData)
         .eq('id', editingId);
 
       if (error) throw error;
+
+      // Si cambió a admin_parroquia, crear rol
+      if (editData.user_type === 'admin_parroquia' && editData.parroquia_id) {
+        // Verificar si ya tiene rol
+        const { data: existingRole } = await supabase
+          .from('user_roles')
+          .select('id')
+          .eq('user_id', editingId)
+          .eq('role', 'admin_parroquia')
+          .single();
+
+        if (!existingRole) {
+          await supabase.from('user_roles').insert({
+            user_id: editingId,
+            role: 'admin_parroquia',
+            parroquia_id: editData.parroquia_id
+          });
+        } else {
+          await supabase.from('user_roles')
+            .update({ parroquia_id: editData.parroquia_id })
+            .eq('user_id', editingId)
+            .eq('role', 'admin_parroquia');
+        }
+      }
 
       toast({ title: "Éxito", description: "Usuario actualizado" });
       setEditingId(null);
@@ -246,6 +302,82 @@ const UsersManager: React.FC = () => {
       });
     }
   };
+
+  const handleAssignVehicle = async () => {
+    if (!selectedDriverId || !selectedVehicleId) {
+      toast({
+        title: "Error",
+        description: "Selecciona un vehículo",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('vehicles')
+        .update({ driver_id: selectedDriverId })
+        .eq('id', selectedVehicleId);
+
+      if (error) throw error;
+
+      toast({ title: "Éxito", description: "Vehículo asignado al conductor" });
+      setVehicleDialogOpen(false);
+      setSelectedDriverId(null);
+      setSelectedVehicleId('');
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo asignar el vehículo",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCreateAndAssignVehicle = async () => {
+    if (!selectedDriverId || !newVehicle.license_plate) {
+      toast({
+        title: "Error",
+        description: "La placa es obligatoria",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('vehicles').insert([{
+        license_plate: newVehicle.license_plate,
+        model: newVehicle.model,
+        capacity: parseInt(newVehicle.capacity) || 30,
+        route_id: newVehicle.route_id || null,
+        driver_id: selectedDriverId
+      }]);
+
+      if (error) throw error;
+
+      toast({ title: "Éxito", description: "Vehículo creado y asignado al conductor" });
+      setVehicleDialogOpen(false);
+      setSelectedDriverId(null);
+      setNewVehicle({ license_plate: '', model: '', capacity: '30', route_id: '' });
+      setShowCreateVehicle(false);
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el vehículo",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const openVehicleDialog = (driverId: string) => {
+    setSelectedDriverId(driverId);
+    setVehicleDialogOpen(true);
+  };
+
+  // Get available vehicles (not assigned to any driver)
+  const availableVehicles = vehicles.filter(v => !v.driver_id);
 
   // Filter users
   const filteredUsers = users.filter(user => {
@@ -288,8 +420,105 @@ const UsersManager: React.FC = () => {
     }
   };
 
+  // Get vehicle assigned to a driver
+  const getDriverVehicle = (driverId: string) => {
+    return vehicles.find(v => v.driver_id === driverId);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Vehicle Assignment Dialog */}
+      <Dialog open={vehicleDialogOpen} onOpenChange={setVehicleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Asignar Vehículo al Conductor</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {!showCreateVehicle ? (
+              <>
+                <div>
+                  <Label>Seleccionar Vehículo Existente</Label>
+                  <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar vehículo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableVehicles.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.license_plate} - {v.model || 'Sin modelo'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={handleAssignVehicle} disabled={!selectedVehicleId}>
+                    Asignar Vehículo
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowCreateVehicle(true)}>
+                    Crear Nuevo Vehículo
+                  </Button>
+                  <Button variant="ghost" onClick={() => setVehicleDialogOpen(false)}>
+                    Omitir
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Placa *</Label>
+                    <Input
+                      value={newVehicle.license_plate}
+                      onChange={(e) => setNewVehicle({ ...newVehicle, license_plate: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Modelo</Label>
+                    <Input
+                      value={newVehicle.model}
+                      onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Capacidad</Label>
+                    <Input
+                      type="number"
+                      value={newVehicle.capacity}
+                      onChange={(e) => setNewVehicle({ ...newVehicle, capacity: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Ruta</Label>
+                    <Select
+                      value={newVehicle.route_id}
+                      onValueChange={(v) => setNewVehicle({ ...newVehicle, route_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {routes.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={handleCreateAndAssignVehicle}>
+                    Crear y Asignar
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowCreateVehicle(false)}>
+                    Volver
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Create User Form */}
       <Card>
         <CardHeader>
@@ -344,6 +573,14 @@ const UsersManager: React.FC = () => {
                 value={newUser.password}
                 onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                 placeholder="Mínimo 6 caracteres"
+              />
+            </div>
+            <div>
+              <Label>Usuario</Label>
+              <Input
+                value={newUser.username}
+                onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                placeholder="nombre_usuario"
               />
             </div>
             <div>
@@ -430,6 +667,7 @@ const UsersManager: React.FC = () => {
                 <TableHead>Tipo</TableHead>
                 <TableHead>Teléfono</TableHead>
                 <TableHead>Parroquia</TableHead>
+                <TableHead>Vehículo</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -446,7 +684,16 @@ const UsersManager: React.FC = () => {
                       user.full_name || 'Sin nombre'
                     )}
                   </TableCell>
-                  <TableCell>{user.username || '-'}</TableCell>
+                  <TableCell>
+                    {editingId === user.id ? (
+                      <Input
+                        value={editData.username || ''}
+                        onChange={(e) => setEditData({ ...editData, username: e.target.value })}
+                      />
+                    ) : (
+                      user.username || '-'
+                    )}
+                  </TableCell>
                   <TableCell>
                     {editingId === user.id ? (
                       <Select
@@ -459,6 +706,7 @@ const UsersManager: React.FC = () => {
                         <SelectContent>
                           <SelectItem value="passenger">Pasajero</SelectItem>
                           <SelectItem value="driver">Conductor</SelectItem>
+                          <SelectItem value="admin_parroquia">Admin Parroquia</SelectItem>
                         </SelectContent>
                       </Select>
                     ) : (
@@ -467,8 +715,47 @@ const UsersManager: React.FC = () => {
                       </span>
                     )}
                   </TableCell>
-                  <TableCell>{user.phone || '-'}</TableCell>
-                  <TableCell>{user.parroquia?.nombre || '-'}</TableCell>
+                  <TableCell>
+                    {editingId === user.id ? (
+                      <Input
+                        value={editData.phone || ''}
+                        onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                      />
+                    ) : (
+                      user.phone || '-'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingId === user.id ? (
+                      <Select
+                        value={editData.parroquia_id || ''}
+                        onValueChange={(value) => setEditData({ ...editData, parroquia_id: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {parroquias.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      user.parroquia?.nombre || '-'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {user.user_type === 'driver' ? (
+                      getDriverVehicle(user.id) ? (
+                        <span className="text-sm">{getDriverVehicle(user.id)?.license_plate}</span>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => openVehicleDialog(user.id)}>
+                          <Car size={14} className="mr-1" />
+                          Asignar
+                        </Button>
+                      )
+                    ) : '-'}
+                  </TableCell>
                   <TableCell className="text-right space-x-2">
                     {editingId === user.id ? (
                       <>

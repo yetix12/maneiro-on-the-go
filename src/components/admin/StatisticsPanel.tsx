@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, Map, MapPin, Building2 } from 'lucide-react';
+import { Users, Map, MapPin, Search, Filter } from 'lucide-react';
 
 interface Parroquia {
   id: string;
@@ -18,6 +21,19 @@ interface ParroquiaStats {
   total_paradas: number;
 }
 
+interface UserData {
+  id: string;
+  full_name: string | null;
+  username: string | null;
+  user_type: string | null;
+  phone: string | null;
+  direccion: string | null;
+  calle: string | null;
+  sector: string | null;
+  fecha_nacimiento: string | null;
+  parroquia?: { nombre: string };
+}
+
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 const StatisticsPanel: React.FC = () => {
@@ -25,11 +41,21 @@ const StatisticsPanel: React.FC = () => {
   const [selectedParroquia, setSelectedParroquia] = useState<string>('all');
   const [stats, setStats] = useState<ParroquiaStats | null>(null);
   const [allStats, setAllStats] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterUserType, setFilterUserType] = useState<string>('all');
+  const [filterCalle, setFilterCalle] = useState('');
+  const [filterSector, setFilterSector] = useState('');
+  const [filterAgeMin, setFilterAgeMin] = useState('');
+  const [filterAgeMax, setFilterAgeMax] = useState('');
 
   useEffect(() => {
     loadParroquias();
     loadAllStats();
+    loadUsers();
   }, []);
 
   useEffect(() => {
@@ -38,6 +64,7 @@ const StatisticsPanel: React.FC = () => {
     } else {
       setStats(null);
     }
+    loadUsers();
   }, [selectedParroquia]);
 
   const loadParroquias = async () => {
@@ -54,10 +81,36 @@ const StatisticsPanel: React.FC = () => {
     }
   };
 
+  const loadUsers = async () => {
+    try {
+      let query = supabase
+        .from('profiles')
+        .select('id, full_name, username, user_type, phone, direccion, calle, sector, fecha_nacimiento, parroquia_id')
+        .order('full_name');
+
+      if (selectedParroquia !== 'all') {
+        query = query.eq('parroquia_id', selectedParroquia);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      // Enrich with parroquia names
+      const { data: parroquiasData } = await supabase.from('parroquias').select('id, nombre');
+      const enrichedUsers = (data || []).map(user => ({
+        ...user,
+        parroquia: parroquiasData?.find(p => p.id === user.parroquia_id)
+      }));
+
+      setUsers(enrichedUsers);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
+
   const loadAllStats = async () => {
     setLoading(true);
     try {
-      // Get stats for each parroquia
       const { data: parroquiasData } = await supabase
         .from('parroquias')
         .select('id, nombre')
@@ -117,10 +170,55 @@ const StatisticsPanel: React.FC = () => {
     }
   };
 
+  // Calculate age from birth date
+  const calculateAge = (birthDate: string | null): number | null => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // Filter users
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      (user.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (user.username?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+    
+    const matchesType = filterUserType === 'all' || user.user_type === filterUserType;
+    
+    const matchesCalle = !filterCalle || 
+      (user.calle?.toLowerCase() || '').includes(filterCalle.toLowerCase()) ||
+      (user.direccion?.toLowerCase() || '').includes(filterCalle.toLowerCase());
+    
+    const matchesSector = !filterSector || 
+      (user.sector?.toLowerCase() || '').includes(filterSector.toLowerCase());
+
+    const age = calculateAge(user.fecha_nacimiento);
+    const matchesAgeMin = !filterAgeMin || (age !== null && age >= parseInt(filterAgeMin));
+    const matchesAgeMax = !filterAgeMax || (age !== null && age <= parseInt(filterAgeMax));
+
+    return matchesSearch && matchesType && matchesCalle && matchesSector && matchesAgeMin && matchesAgeMax;
+  });
+
   const pieData = stats ? [
     { name: 'Pasajeros', value: stats.total_pasajeros },
     { name: 'Conductores', value: stats.total_conductores },
   ].filter(d => d.value > 0) : [];
+
+  const getUserTypeLabel = (type: string | null) => {
+    switch (type) {
+      case 'admin_general': return 'Admin General';
+      case 'admin_parroquia': return 'Admin Parroquia';
+      case 'driver': return 'Conductor';
+      case 'passenger': return 'Pasajero';
+      default: return 'Sin tipo';
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -283,6 +381,106 @@ const StatisticsPanel: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Detailed User Data with Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter size={20} />
+            Datos de Usuarios (Filtros Detallados)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+              <Input
+                placeholder="Buscar nombre..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={filterUserType} onValueChange={setFilterUserType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Tipo de usuario" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="passenger">Pasajeros</SelectItem>
+                <SelectItem value="driver">Conductores</SelectItem>
+                <SelectItem value="admin_parroquia">Admin Parroquia</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              placeholder="Filtrar por calle"
+              value={filterCalle}
+              onChange={(e) => setFilterCalle(e.target.value)}
+            />
+            <Input
+              placeholder="Filtrar por sector"
+              value={filterSector}
+              onChange={(e) => setFilterSector(e.target.value)}
+            />
+            <Input
+              type="number"
+              placeholder="Edad mínima"
+              value={filterAgeMin}
+              onChange={(e) => setFilterAgeMin(e.target.value)}
+            />
+            <Input
+              type="number"
+              placeholder="Edad máxima"
+              value={filterAgeMax}
+              onChange={(e) => setFilterAgeMax(e.target.value)}
+            />
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Usuario</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Teléfono</TableHead>
+                <TableHead>Parroquia</TableHead>
+                <TableHead>Calle/Dirección</TableHead>
+                <TableHead>Sector</TableHead>
+                <TableHead>Edad</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredUsers.slice(0, 50).map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.full_name || '-'}</TableCell>
+                  <TableCell>{user.username || '-'}</TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      user.user_type === 'driver' ? 'bg-orange-100 text-orange-700' :
+                      user.user_type === 'admin_parroquia' ? 'bg-blue-100 text-blue-700' :
+                      'bg-green-100 text-green-700'
+                    }`}>
+                      {getUserTypeLabel(user.user_type)}
+                    </span>
+                  </TableCell>
+                  <TableCell>{user.phone || '-'}</TableCell>
+                  <TableCell>{user.parroquia?.nombre || '-'}</TableCell>
+                  <TableCell>{user.calle || user.direccion || '-'}</TableCell>
+                  <TableCell>{user.sector || '-'}</TableCell>
+                  <TableCell>
+                    {user.fecha_nacimiento ? calculateAge(user.fecha_nacimiento) : '-'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          <p className="text-sm text-muted-foreground mt-4">
+            Mostrando {Math.min(filteredUsers.length, 50)} de {filteredUsers.length} usuarios
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, Map, MapPin, Building2, Bus, Image } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+
+interface Parroquia {
+  id: string;
+  nombre: string;
+}
 
 interface Stats {
   totalUsers: number;
@@ -9,48 +15,127 @@ interface Stats {
   totalDrivers: number;
   totalRoutes: number;
   totalStops: number;
-  totalParroquias: number;
   totalVehicles: number;
   totalImages: number;
 }
 
 const DashboardOverview: React.FC = () => {
+  const [parroquias, setParroquias] = useState<Parroquia[]>([]);
+  const [selectedParroquia, setSelectedParroquia] = useState<string>('all');
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     totalPassengers: 0,
     totalDrivers: 0,
     totalRoutes: 0,
     totalStops: 0,
-    totalParroquias: 0,
     totalVehicles: 0,
     totalImages: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadStats();
+    loadParroquias();
   }, []);
 
+  useEffect(() => {
+    loadStats();
+  }, [selectedParroquia]);
+
+  const loadParroquias = async () => {
+    const { data } = await supabase
+      .from('parroquias')
+      .select('id, nombre')
+      .eq('is_active', true)
+      .order('nombre');
+    setParroquias(data || []);
+  };
+
   const loadStats = async () => {
+    setLoading(true);
     try {
+      // Build queries based on filter
+      const parroquiaFilter = selectedParroquia !== 'all' ? selectedParroquia : null;
+
+      // Profiles queries
+      let profilesQuery = supabase.from('profiles').select('*', { count: 'exact', head: true });
+      let passengersQuery = supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('user_type', 'passenger');
+      let driversQuery = supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('user_type', 'driver');
+
+      if (parroquiaFilter) {
+        profilesQuery = profilesQuery.eq('parroquia_id', parroquiaFilter);
+        passengersQuery = passengersQuery.eq('parroquia_id', parroquiaFilter);
+        driversQuery = driversQuery.eq('parroquia_id', parroquiaFilter);
+      }
+
+      // Routes query
+      let routesQuery = supabase.from('bus_routes').select('*', { count: 'exact', head: true }).eq('is_active', true);
+      if (parroquiaFilter) {
+        routesQuery = routesQuery.eq('parroquia_id', parroquiaFilter);
+      }
+
+      // For stops, we need to filter by routes that belong to the parroquia
+      let stopsCount = 0;
+      if (parroquiaFilter) {
+        // Get routes for the parroquia first
+        const { data: routesData } = await supabase
+          .from('bus_routes')
+          .select('id')
+          .eq('parroquia_id', parroquiaFilter)
+          .eq('is_active', true);
+        
+        if (routesData && routesData.length > 0) {
+          const routeIds = routesData.map(r => r.id);
+          const { count } = await supabase
+            .from('bus_stops')
+            .select('*', { count: 'exact', head: true })
+            .in('route_id', routeIds);
+          stopsCount = count || 0;
+        }
+      } else {
+        const { count } = await supabase.from('bus_stops').select('*', { count: 'exact', head: true });
+        stopsCount = count || 0;
+      }
+
+      // Vehicles - filter by route's parroquia if needed
+      let vehiclesCount = 0;
+      if (parroquiaFilter) {
+        const { data: routesData } = await supabase
+          .from('bus_routes')
+          .select('id')
+          .eq('parroquia_id', parroquiaFilter)
+          .eq('is_active', true);
+        
+        if (routesData && routesData.length > 0) {
+          const routeIds = routesData.map(r => r.id);
+          const { count } = await supabase
+            .from('vehicles')
+            .select('*', { count: 'exact', head: true })
+            .in('route_id', routeIds);
+          vehiclesCount = count || 0;
+        }
+      } else {
+        const { count } = await supabase.from('vehicles').select('*', { count: 'exact', head: true });
+        vehiclesCount = count || 0;
+      }
+
+      // Images - filter by parroquia
+      let imagesQuery = supabase.from('galeria_maneiro').select('*', { count: 'exact', head: true });
+      if (parroquiaFilter) {
+        imagesQuery = imagesQuery.eq('parroquia_id', parroquiaFilter);
+      }
+
       const [
         { count: usersCount },
         { count: passengersCount },
         { count: driversCount },
         { count: routesCount },
-        { count: stopsCount },
-        { count: parroquiasCount },
-        { count: vehiclesCount },
         { count: imagesCount },
       ] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('user_type', 'passenger'),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('user_type', 'driver'),
-        supabase.from('bus_routes').select('*', { count: 'exact', head: true }).eq('is_active', true),
-        supabase.from('bus_stops').select('*', { count: 'exact', head: true }),
-        supabase.from('parroquias').select('*', { count: 'exact', head: true }).eq('is_active', true),
-        supabase.from('vehicles').select('*', { count: 'exact', head: true }),
-        supabase.from('galeria_maneiro').select('*', { count: 'exact', head: true }),
+        profilesQuery,
+        passengersQuery,
+        driversQuery,
+        routesQuery,
+        imagesQuery,
       ]);
 
       setStats({
@@ -58,9 +143,8 @@ const DashboardOverview: React.FC = () => {
         totalPassengers: passengersCount || 0,
         totalDrivers: driversCount || 0,
         totalRoutes: routesCount || 0,
-        totalStops: stopsCount || 0,
-        totalParroquias: parroquiasCount || 0,
-        totalVehicles: vehiclesCount || 0,
+        totalStops: stopsCount,
+        totalVehicles: vehiclesCount,
         totalImages: imagesCount || 0,
       });
     } catch (error) {
@@ -76,15 +160,14 @@ const DashboardOverview: React.FC = () => {
     { label: 'Conductores', value: stats.totalDrivers, icon: Users, color: 'bg-orange-500' },
     { label: 'Rutas Activas', value: stats.totalRoutes, icon: Map, color: 'bg-purple-500' },
     { label: 'Paradas', value: stats.totalStops, icon: MapPin, color: 'bg-pink-500' },
-    { label: 'Parroquias', value: stats.totalParroquias, icon: Building2, color: 'bg-indigo-500' },
     { label: 'Vehículos', value: stats.totalVehicles, icon: Bus, color: 'bg-teal-500' },
     { label: 'Imágenes', value: stats.totalImages, icon: Image, color: 'bg-amber-500' },
   ];
 
-  if (loading) {
+  if (loading && parroquias.length === 0) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[...Array(8)].map((_, i) => (
+        {[...Array(7)].map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardContent className="p-6">
               <div className="h-20 bg-muted rounded" />
@@ -97,9 +180,22 @@ const DashboardOverview: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Panel de Control</h2>
-        <p className="text-muted-foreground">Resumen general del sistema</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Panel de Control</h2>
+          <p className="text-muted-foreground">Resumen general del sistema</p>
+        </div>
+        <Select value={selectedParroquia} onValueChange={setSelectedParroquia}>
+          <SelectTrigger className="w-64">
+            <SelectValue placeholder="Filtrar por parroquia" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las Parroquias</SelectItem>
+            {parroquias.map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -109,7 +205,7 @@ const DashboardOverview: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  <p className="text-3xl font-bold mt-1">{stat.value}</p>
+                  <p className="text-3xl font-bold mt-1">{loading ? '...' : stat.value}</p>
                 </div>
                 <div className={`p-3 rounded-full ${stat.color}`}>
                   <stat.icon size={24} className="text-white" />
