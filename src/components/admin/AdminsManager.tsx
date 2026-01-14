@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, Shield, Building2 } from 'lucide-react';
+import { Plus, Trash2, Shield, Edit, Save, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -41,6 +41,8 @@ const AdminsManager: React.FC = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [parroquias, setParroquias] = useState<Parroquia[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<Partial<UserRole>>({});
   const [newRole, setNewRole] = useState({
     user_id: '',
     role: 'admin_parroquia' as 'admin_general' | 'admin_parroquia',
@@ -150,6 +152,38 @@ const AdminsManager: React.FC = () => {
     }
   };
 
+  const handleEdit = (role: UserRole) => {
+    setEditingId(role.id);
+    setEditData(role);
+  };
+
+  const handleSave = async () => {
+    if (!editingId) return;
+
+    try {
+      const updateData: any = {
+        parroquia_id: editData.parroquia_id || null
+      };
+
+      const { error } = await supabase
+        .from('user_roles')
+        .update(updateData)
+        .eq('id', editingId);
+
+      if (error) throw error;
+
+      toast({ title: "Éxito", description: "Administrador actualizado" });
+      setEditingId(null);
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleDeleteRole = async (id: string, userId: string) => {
     if (!confirm('¿Estás seguro de eliminar este rol de administrador?')) return;
 
@@ -189,7 +223,7 @@ const AdminsManager: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield size={24} />
-            Asignar Nuevo Administrador
+            Agregar Administrador
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -222,10 +256,12 @@ const AdminsManager: React.FC = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin_general">Administrador General</SelectItem>
                   <SelectItem value="admin_parroquia">Administrador de Parroquia</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Los Admin General solo se crean desde la base de datos.
+              </p>
             </div>
             {newRole.role === 'admin_parroquia' && (
               <div>
@@ -250,7 +286,7 @@ const AdminsManager: React.FC = () => {
             <div className="flex items-end">
               <Button onClick={handleAddRole} className="w-full">
                 <Plus size={16} className="mr-2" />
-                Asignar Rol
+                Agregar
               </Button>
             </div>
           </div>
@@ -259,7 +295,7 @@ const AdminsManager: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Administradores del Sistema</CardTitle>
+          <CardTitle>Editar Administradores</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -288,19 +324,53 @@ const AdminsManager: React.FC = () => {
                     </span>
                   </TableCell>
                   <TableCell>
-                    {role.parroquia?.nombre || '-'}
+                    {editingId === role.id && role.role === 'admin_parroquia' ? (
+                      <Select
+                        value={editData.parroquia_id || ''}
+                        onValueChange={(value) => setEditData({ ...editData, parroquia_id: value })}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {parroquias.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      role.parroquia?.nombre || '-'
+                    )}
                   </TableCell>
                   <TableCell>
                     {new Date(role.created_at).toLocaleDateString()}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Button 
-                      size="sm" 
-                      variant="destructive" 
-                      onClick={() => handleDeleteRole(role.id, role.user_id)}
-                    >
-                      <Trash2 size={16} />
-                    </Button>
+                  <TableCell className="text-right space-x-2">
+                    {editingId === role.id ? (
+                      <>
+                        <Button size="sm" onClick={handleSave}>
+                          <Save size={16} />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>
+                          <X size={16} />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        {role.role === 'admin_parroquia' && (
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(role)}>
+                            <Edit size={16} />
+                          </Button>
+                        )}
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          onClick={() => handleDeleteRole(role.id, role.user_id)}
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

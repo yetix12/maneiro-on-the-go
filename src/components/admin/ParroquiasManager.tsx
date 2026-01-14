@@ -14,7 +14,6 @@ interface Parroquia {
   municipio: string | null;
   estado: string | null;
   descripcion: string | null;
-  is_active: boolean;
 }
 
 const ParroquiasManager: React.FC = () => {
@@ -39,7 +38,7 @@ const ParroquiasManager: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('parroquias')
-        .select('*')
+        .select('id, nombre, municipio, estado, descripcion')
         .order('nombre');
 
       if (error) throw error;
@@ -99,8 +98,7 @@ const ParroquiasManager: React.FC = () => {
           nombre: editData.nombre,
           municipio: editData.municipio,
           estado: editData.estado,
-          descripcion: editData.descripcion,
-          is_active: editData.is_active
+          descripcion: editData.descripcion
         })
         .eq('id', editingId);
 
@@ -193,7 +191,6 @@ const ParroquiasManager: React.FC = () => {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Municipio</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Activa</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -220,13 +217,15 @@ const ParroquiasManager: React.FC = () => {
                       parroquia.municipio || '-'
                     )}
                   </TableCell>
-                  <TableCell>{parroquia.estado || '-'}</TableCell>
                   <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      parroquia.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {parroquia.is_active ? 'Activa' : 'Inactiva'}
-                    </span>
+                    {editingId === parroquia.id ? (
+                      <Input
+                        value={editData.estado || ''}
+                        onChange={(e) => setEditData({ ...editData, estado: e.target.value })}
+                      />
+                    ) : (
+                      parroquia.estado || '-'
+                    )}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
                     {editingId === parroquia.id ? (

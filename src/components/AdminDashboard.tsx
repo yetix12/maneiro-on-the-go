@@ -27,6 +27,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [routes, setRoutes] = useState<any[]>([]);
   const [editingRoute, setEditingRoute] = useState<string | null>(null);
   const [editRouteData, setEditRouteData] = useState<any>({});
+  const [selectedRouteId, setSelectedRouteId] = useState<string>('');
   const [newRoute, setNewRoute] = useState({
     name: '',
     description: '',
@@ -34,7 +35,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     short_route: '',
     long_route: '',
     route_identification: '',
-    parroquia_id: ''
+    parroquia_id: '',
+    frequency_minutes: '15',
+    departure_time: '05:30',
+    arrival_time: '21:00'
   });
 
   // Bus stops state
@@ -49,6 +53,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   // Vehicles state
   const [vehicles, setVehicles] = useState<any[]>([]);
+  const [editingVehicle, setEditingVehicle] = useState<string | null>(null);
+  const [editVehicleData, setEditVehicleData] = useState<any>({});
   const [newVehicle, setNewVehicle] = useState({
     license_plate: '',
     model: '',
@@ -59,11 +65,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   // Gallery state
   const [images, setImages] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [newImage, setNewImage] = useState({
     titulo: '',
     descripcion: '',
     imagen_url: '',
-    categoria: ''
+    categoria: '',
+    bus_stop_ids: [] as string[]
   });
 
   // Parroquias for selects

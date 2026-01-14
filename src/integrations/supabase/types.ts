@@ -16,9 +16,12 @@ export type Database = {
     Tables: {
       bus_routes: {
         Row: {
+          arrival_time: string | null
           color: string | null
           created_at: string | null
+          departure_time: string | null
           description: string | null
+          frequency_minutes: number | null
           id: string
           is_active: boolean | null
           long_route: string | null
@@ -29,9 +32,12 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          arrival_time?: string | null
           color?: string | null
           created_at?: string | null
+          departure_time?: string | null
           description?: string | null
+          frequency_minutes?: number | null
           id?: string
           is_active?: boolean | null
           long_route?: string | null
@@ -42,9 +48,12 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          arrival_time?: string | null
           color?: string | null
           created_at?: string | null
+          departure_time?: string | null
           description?: string | null
+          frequency_minutes?: number | null
           id?: string
           is_active?: boolean | null
           long_route?: string | null
@@ -143,6 +152,7 @@ export type Database = {
       }
       galeria_maneiro: {
         Row: {
+          bus_stop_ids: string[] | null
           categoria: string | null
           created_at: string | null
           created_by: string | null
@@ -154,6 +164,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          bus_stop_ids?: string[] | null
           categoria?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -165,6 +176,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          bus_stop_ids?: string[] | null
           categoria?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -309,34 +321,43 @@ export type Database = {
       }
       profiles: {
         Row: {
+          calle: string | null
           created_at: string | null
           direccion: string | null
+          fecha_nacimiento: string | null
           full_name: string | null
           id: string
           parroquia_id: string | null
           phone: string | null
+          sector: string | null
           updated_at: string | null
           user_type: string | null
           username: string | null
         }
         Insert: {
+          calle?: string | null
           created_at?: string | null
           direccion?: string | null
+          fecha_nacimiento?: string | null
           full_name?: string | null
           id: string
           parroquia_id?: string | null
           phone?: string | null
+          sector?: string | null
           updated_at?: string | null
           user_type?: string | null
           username?: string | null
         }
         Update: {
+          calle?: string | null
           created_at?: string | null
           direccion?: string | null
+          fecha_nacimiento?: string | null
           full_name?: string | null
           id?: string
           parroquia_id?: string | null
           phone?: string | null
+          sector?: string | null
           updated_at?: string | null
           user_type?: string | null
           username?: string | null
