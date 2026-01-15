@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Save, X, Search, Car } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Edit, Trash2, Save, X, Search, Car, Eye, Power, PowerOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface User {
   id: string;
@@ -18,6 +20,9 @@ interface User {
   phone: string | null;
   parroquia_id: string | null;
   direccion: string | null;
+  calle: string | null;
+  sector: string | null;
+  fecha_nacimiento: string | null;
   parroquia?: {
     nombre: string;
   };
@@ -33,6 +38,9 @@ interface Vehicle {
   license_plate: string;
   model: string | null;
   driver_id: string | null;
+  capacity: number | null;
+  status: string | null;
+  route_id: string | null;
 }
 
 interface Route {
@@ -42,6 +50,7 @@ interface Route {
 
 const UsersManager: React.FC = () => {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [parroquias, setParroquias] = useState<Parroquia[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -56,6 +65,7 @@ const UsersManager: React.FC = () => {
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
   const [showCreateVehicle, setShowCreateVehicle] = useState(false);
+  const [userDetailDialog, setUserDetailDialog] = useState<User | null>(null);
   const [newVehicle, setNewVehicle] = useState({
     license_plate: '',
     model: '',
@@ -84,7 +94,7 @@ const UsersManager: React.FC = () => {
       const [usersRes, parroquiasRes, vehiclesRes, routesRes] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('parroquias').select('id, nombre').eq('is_active', true),
-        supabase.from('vehicles').select('id, license_plate, model, driver_id'),
+        supabase.from('vehicles').select('id, license_plate, model, driver_id, capacity, status, route_id'),
         supabase.from('bus_routes').select('id, name').eq('is_active', true)
       ]);
 
@@ -149,7 +159,6 @@ const UsersManager: React.FC = () => {
       return;
     }
 
-    // Admin de parroquia requiere parroquia
     if (newUser.user_type === 'admin_parroquia' && !newUser.parroquia_id) {
       toast({
         title: "Error",
@@ -179,7 +188,6 @@ const UsersManager: React.FC = () => {
 
       if (authError) throw authError;
 
-      // Si es admin_parroquia, agregar rol en user_roles
       if (newUser.user_type === 'admin_parroquia' && authData.user) {
         const { error: roleError } = await supabase
           .from('user_roles')
@@ -202,7 +210,6 @@ const UsersManager: React.FC = () => {
 
       toast({ title: "Éxito", description: `${typeLabels[newUser.user_type]} creado exitosamente` });
       
-      // Si es conductor, abrir diálogo para asignar vehículo
       if (newUser.user_type === 'driver' && authData.user) {
         setSelectedDriverId(authData.user.id);
         setVehicleDialogOpen(true);
@@ -229,6 +236,17 @@ const UsersManager: React.FC = () => {
   const handleSave = async () => {
     if (!editingId) return;
 
+    // Check if trying to change admin_general type
+    const originalUser = users.find(u => u.id === editingId);
+    if (originalUser?.user_type === 'admin_general' && editData.user_type !== 'admin_general') {
+      toast({
+        title: "Error",
+        description: "No se puede cambiar el tipo del Administrador General",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const updateData: any = {
         full_name: editData.full_name,
@@ -245,9 +263,7 @@ const UsersManager: React.FC = () => {
 
       if (error) throw error;
 
-      // Si cambió a admin_parroquia, crear rol
       if (editData.user_type === 'admin_parroquia' && editData.parroquia_id) {
-        // Verificar si ya tiene rol
         const { data: existingRole } = await supabase
           .from('user_roles')
           .select('id')
@@ -282,6 +298,17 @@ const UsersManager: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    // Check if this is admin_general
+    const user = users.find(u => u.id === id);
+    if (user?.user_type === 'admin_general') {
+      toast({
+        title: "Error",
+        description: "No se puede eliminar al Administrador General",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
 
     try {
@@ -376,10 +403,8 @@ const UsersManager: React.FC = () => {
     setVehicleDialogOpen(true);
   };
 
-  // Get available vehicles (not assigned to any driver)
   const availableVehicles = vehicles.filter(v => !v.driver_id);
 
-  // Filter users
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       (user.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -420,9 +445,24 @@ const UsersManager: React.FC = () => {
     }
   };
 
-  // Get vehicle assigned to a driver
   const getDriverVehicle = (driverId: string) => {
     return vehicles.find(v => v.driver_id === driverId);
+  };
+
+  const calculateAge = (birthDate: string | null): number | null => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const isCurrentAdminGeneral = (userId: string) => {
+    return currentUser?.id === userId && users.find(u => u.id === userId)?.user_type === 'admin_general';
   };
 
   return (
@@ -519,6 +559,89 @@ const UsersManager: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* User Detail Dialog */}
+      <Dialog open={!!userDetailDialog} onOpenChange={() => setUserDetailDialog(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Información del Usuario</DialogTitle>
+          </DialogHeader>
+          {userDetailDialog && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Nombre Completo</Label>
+                  <p className="font-medium">{userDetailDialog.full_name || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Usuario</Label>
+                  <p className="font-medium">{userDetailDialog.username || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Tipo</Label>
+                  <Badge className={getUserTypeColor(userDetailDialog.user_type)}>
+                    {getUserTypeLabel(userDetailDialog.user_type)}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Estado</Label>
+                  <Badge variant={userDetailDialog.is_active !== false ? 'default' : 'destructive'}>
+                    {userDetailDialog.is_active !== false ? 'Activo' : 'Inactivo'}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Teléfono</Label>
+                  <p className="font-medium">{userDetailDialog.phone || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Parroquia</Label>
+                  <p className="font-medium">{userDetailDialog.parroquia?.nombre || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Dirección</Label>
+                  <p className="font-medium">{userDetailDialog.direccion || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Calle</Label>
+                  <p className="font-medium">{userDetailDialog.calle || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Sector</Label>
+                  <p className="font-medium">{userDetailDialog.sector || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Fecha de Nacimiento</Label>
+                  <p className="font-medium">
+                    {userDetailDialog.fecha_nacimiento 
+                      ? `${userDetailDialog.fecha_nacimiento} (${calculateAge(userDetailDialog.fecha_nacimiento)} años)` 
+                      : '-'}
+                  </p>
+                </div>
+              </div>
+              
+              {userDetailDialog.user_type === 'driver' && (
+                <div className="border-t pt-4">
+                  <Label className="text-muted-foreground text-xs">Vehículo Asignado</Label>
+                  {(() => {
+                    const vehicle = getDriverVehicle(userDetailDialog.id);
+                    if (vehicle) {
+                      return (
+                        <div className="bg-muted p-3 rounded-lg mt-1">
+                          <p className="font-medium">Placa: {vehicle.license_plate}</p>
+                          <p className="text-sm text-muted-foreground">Modelo: {vehicle.model || '-'}</p>
+                          <p className="text-sm text-muted-foreground">Capacidad: {vehicle.capacity || 30} pasajeros</p>
+                          <p className="text-sm text-muted-foreground">Estado: {vehicle.status || 'active'}</p>
+                        </div>
+                      );
+                    }
+                    return <p className="text-muted-foreground">Sin vehículo asignado</p>;
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Create User Form */}
       <Card>
         <CardHeader>
@@ -526,7 +649,6 @@ const UsersManager: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Tipo de usuario selector */}
             <div className="md:col-span-3">
               <Label>Tipo de Usuario *</Label>
               <Select
@@ -665,6 +787,7 @@ const UsersManager: React.FC = () => {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Usuario</TableHead>
                 <TableHead>Tipo</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead>Teléfono</TableHead>
                 <TableHead>Parroquia</TableHead>
                 <TableHead>Vehículo</TableHead>
@@ -695,7 +818,7 @@ const UsersManager: React.FC = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {editingId === user.id ? (
+                    {editingId === user.id && user.user_type !== 'admin_general' ? (
                       <Select
                         value={editData.user_type || 'passenger'}
                         onValueChange={(value) => setEditData({ ...editData, user_type: value })}
@@ -714,6 +837,11 @@ const UsersManager: React.FC = () => {
                         {getUserTypeLabel(user.user_type)}
                       </span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={user.is_active !== false ? 'default' : 'destructive'}>
+                      {user.is_active !== false ? 'Activo' : 'Inactivo'}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     {editingId === user.id ? (
@@ -756,7 +884,7 @@ const UsersManager: React.FC = () => {
                       )
                     ) : '-'}
                   </TableCell>
-                  <TableCell className="text-right space-x-2">
+                  <TableCell className="text-right space-x-1">
                     {editingId === user.id ? (
                       <>
                         <Button size="sm" onClick={handleSave}>
@@ -768,12 +896,27 @@ const UsersManager: React.FC = () => {
                       </>
                     ) : (
                       <>
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(user)}>
+                        <Button size="sm" variant="outline" onClick={() => setUserDetailDialog(user)} title="Ver información">
+                          <Eye size={16} />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(user)} title="Editar">
                           <Edit size={16} />
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDelete(user.id)}>
-                          <Trash2 size={16} />
-                        </Button>
+                        {user.user_type !== 'admin_general' && (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant={user.is_active !== false ? 'outline' : 'default'}
+                              onClick={() => handleToggleActive(user)}
+                              title={user.is_active !== false ? 'Desactivar' : 'Activar'}
+                            >
+                              {user.is_active !== false ? <PowerOff size={16} /> : <Power size={16} />}
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleDelete(user.id)} title="Eliminar">
+                              <Trash2 size={16} />
+                            </Button>
+                          </>
+                        )}
                       </>
                     )}
                   </TableCell>
