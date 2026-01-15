@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, Shield, Edit, Save, X } from 'lucide-react';
+import { Plus, Trash2, Shield, Edit, Save, X, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -42,11 +42,15 @@ const AdminsManager: React.FC = () => {
   const [parroquias, setParroquias] = useState<Parroquia[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<Partial<UserRole>>({});
+  const [editData, setEditData] = useState<{
+    parroquia_id?: string | null;
+    full_name?: string | null;
+  }>({});
   const [newRole, setNewRole] = useState({
     user_id: '',
     role: 'admin_parroquia' as 'admin_general' | 'admin_parroquia',
-    parroquia_id: ''
+    parroquia_id: '',
+    new_name: '' // Para agregar nuevo nombre
   });
 
   useEffect(() => {
@@ -134,14 +138,19 @@ const AdminsManager: React.FC = () => {
 
       if (error) throw error;
 
-      // Also update profile user_type
+      // Also update profile user_type and name if new_name is provided
+      const updateData: any = { user_type: newRole.role };
+      if (newRole.new_name.trim()) {
+        updateData.full_name = newRole.new_name.trim();
+      }
+
       await supabase
         .from('profiles')
-        .update({ user_type: newRole.role })
+        .update(updateData)
         .eq('id', newRole.user_id);
 
       toast({ title: "Éxito", description: "Rol asignado exitosamente" });
-      setNewRole({ user_id: '', role: 'admin_parroquia', parroquia_id: '' });
+      setNewRole({ user_id: '', role: 'admin_parroquia', parroquia_id: '', new_name: '' });
       loadData();
     } catch (error: any) {
       toast({
@@ -154,23 +163,38 @@ const AdminsManager: React.FC = () => {
 
   const handleEdit = (role: UserRole) => {
     setEditingId(role.id);
-    setEditData(role);
+    setEditData({
+      parroquia_id: role.parroquia_id,
+      full_name: role.profile?.full_name || ''
+    });
   };
 
   const handleSave = async () => {
     if (!editingId) return;
 
     try {
-      const updateData: any = {
-        parroquia_id: editData.parroquia_id || null
-      };
+      const role = userRoles.find(r => r.id === editingId);
+      if (!role) return;
 
-      const { error } = await supabase
-        .from('user_roles')
-        .update(updateData)
-        .eq('id', editingId);
+      // Update role parroquia if applicable
+      if (role.role === 'admin_parroquia') {
+        const { error } = await supabase
+          .from('user_roles')
+          .update({ parroquia_id: editData.parroquia_id || null })
+          .eq('id', editingId);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
+
+      // Update profile name
+      if (editData.full_name !== undefined) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ full_name: editData.full_name })
+          .eq('id', role.user_id);
+
+        if (profileError) throw profileError;
+      }
 
       toast({ title: "Éxito", description: "Administrador actualizado" });
       setEditingId(null);
@@ -217,6 +241,9 @@ const AdminsManager: React.FC = () => {
     profile => !userRoles.some(role => role.user_id === profile.id)
   );
 
+  // Get selected profile for new name hint
+  const selectedProfile = profiles.find(p => p.id === newRole.user_id);
+
   return (
     <div className="space-y-6">
       <Card>
@@ -227,7 +254,7 @@ const AdminsManager: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <Label>Usuario *</Label>
               <Select
@@ -283,8 +310,22 @@ const AdminsManager: React.FC = () => {
                 </Select>
               </div>
             )}
+            <div>
+              <Label className="flex items-center gap-1">
+                <UserPlus size={14} />
+                Nuevo Nombre (opcional)
+              </Label>
+              <Input
+                value={newRole.new_name}
+                onChange={(e) => setNewRole({ ...newRole, new_name: e.target.value })}
+                placeholder={selectedProfile?.full_name || "Nombre del usuario"}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Deja vacío para mantener el nombre actual
+              </p>
+            </div>
             <div className="flex items-end">
-              <Button onClick={handleAddRole} className="w-full">
+              <Button onClick={handleAddRole} className="w-full bg-green-600 hover:bg-green-700">
                 <Plus size={16} className="mr-2" />
                 Agregar
               </Button>
@@ -301,7 +342,7 @@ const AdminsManager: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Usuario</TableHead>
+                <TableHead>Nombre</TableHead>
                 <TableHead>Rol</TableHead>
                 <TableHead>Parroquia</TableHead>
                 <TableHead>Fecha Asignación</TableHead>
@@ -312,7 +353,15 @@ const AdminsManager: React.FC = () => {
               {userRoles.map((role) => (
                 <TableRow key={role.id}>
                   <TableCell>
-                    {role.profile?.full_name || role.profile?.username || 'Usuario'}
+                    {editingId === role.id ? (
+                      <Input
+                        value={editData.full_name || ''}
+                        onChange={(e) => setEditData({ ...editData, full_name: e.target.value })}
+                        placeholder="Nombre completo"
+                      />
+                    ) : (
+                      role.profile?.full_name || role.profile?.username || 'Usuario'
+                    )}
                   </TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 rounded-full text-xs ${
@@ -357,18 +406,18 @@ const AdminsManager: React.FC = () => {
                       </>
                     ) : (
                       <>
-                        {role.role === 'admin_parroquia' && (
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(role)}>
-                            <Edit size={16} />
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(role)}>
+                          <Edit size={16} />
+                        </Button>
+                        {role.role !== 'admin_general' && (
+                          <Button 
+                            size="sm" 
+                            variant="destructive" 
+                            onClick={() => handleDeleteRole(role.id, role.user_id)}
+                          >
+                            <Trash2 size={16} />
                           </Button>
                         )}
-                        <Button 
-                          size="sm" 
-                          variant="destructive" 
-                          onClick={() => handleDeleteRole(role.id, role.user_id)}
-                        >
-                          <Trash2 size={16} />
-                        </Button>
                       </>
                     )}
                   </TableCell>
