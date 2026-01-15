@@ -133,12 +133,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       return;
     }
 
-    const { error } = await supabase.from('bus_routes').insert([newRoute]);
+    const { error } = await supabase.from('bus_routes').insert([{
+      ...newRoute,
+      frequency_minutes: parseInt(newRoute.frequency_minutes) || 15
+    }]);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Éxito", description: "Ruta creada" });
-      setNewRoute({ name: '', description: '', color: '#3B82F6', short_route: '', long_route: '', route_identification: '', parroquia_id: '' });
+      setNewRoute({ name: '', description: '', color: '#3B82F6', short_route: '', long_route: '', route_identification: '', parroquia_id: '', frequency_minutes: '15', departure_time: '05:30', arrival_time: '21:00' });
       loadRoutes();
     }
   };
@@ -248,7 +251,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Éxito", description: "Imagen agregada" });
-      setNewImage({ titulo: '', descripcion: '', imagen_url: '', categoria: '' });
+      setNewImage({ titulo: '', descripcion: '', imagen_url: '', categoria: '', bus_stop_ids: [] });
       loadImages();
     }
   };
