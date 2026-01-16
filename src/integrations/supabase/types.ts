@@ -327,6 +327,7 @@ export type Database = {
           fecha_nacimiento: string | null
           full_name: string | null
           id: string
+          is_active: boolean | null
           parroquia_id: string | null
           phone: string | null
           sector: string | null
@@ -341,6 +342,7 @@ export type Database = {
           fecha_nacimiento?: string | null
           full_name?: string | null
           id: string
+          is_active?: boolean | null
           parroquia_id?: string | null
           phone?: string | null
           sector?: string | null
@@ -355,6 +357,7 @@ export type Database = {
           fecha_nacimiento?: string | null
           full_name?: string | null
           id?: string
+          is_active?: boolean | null
           parroquia_id?: string | null
           phone?: string | null
           sector?: string | null
