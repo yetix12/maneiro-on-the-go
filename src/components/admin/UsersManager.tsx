@@ -23,6 +23,7 @@ interface User {
   calle: string | null;
   sector: string | null;
   fecha_nacimiento: string | null;
+  is_active?: boolean | null;
   parroquia?: {
     nombre: string;
   };
@@ -325,6 +326,30 @@ const UsersManager: React.FC = () => {
       toast({
         title: "Error",
         description: error.message || "No se pudo eliminar",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleToggleActive = async (user: User) => {
+    try {
+      const newActiveState = user.is_active === false ? true : false;
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_active: newActiveState })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      toast({ 
+        title: "Éxito", 
+        description: `Usuario ${newActiveState ? 'activado' : 'desactivado'} correctamente` 
+      });
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo cambiar el estado",
         variant: "destructive"
       });
     }

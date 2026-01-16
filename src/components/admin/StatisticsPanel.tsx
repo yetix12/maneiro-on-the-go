@@ -31,6 +31,7 @@ interface UserData {
   calle: string | null;
   sector: string | null;
   fecha_nacimiento: string | null;
+  is_active?: boolean | null;
   parroquia?: { nombre: string };
 }
 
