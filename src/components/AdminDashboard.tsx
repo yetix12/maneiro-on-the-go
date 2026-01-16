@@ -1083,16 +1083,125 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               </CardContent>
             </Card>
 
+            {/* Filtros de Galería */}
             <Card>
-              <CardHeader><CardTitle>Galería ({images.length} imágenes)</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Filter size={20} />
+                  Filtros de Galería
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label>Buscar por nombre</Label>
+                    <div className="relative">
+                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <Input 
+                        value={galleryFilters.search} 
+                        onChange={(e) => setGalleryFilters({...galleryFilters, search: e.target.value})}
+                        placeholder="Buscar..."
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Categoría</Label>
+                    <Select value={galleryFilters.categoria} onValueChange={(v) => setGalleryFilters({...galleryFilters, categoria: v})}>
+                      <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {[...new Set(images.map(i => i.categoria).filter(Boolean))].map(cat => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Ruta</Label>
+                    <Select value={galleryFilters.route_id} onValueChange={(v) => setGalleryFilters({...galleryFilters, route_id: v})}>
+                      <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {routes.map(r => (
+                          <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Parada</Label>
+                    <Select value={galleryFilters.stop_id} onValueChange={(v) => setGalleryFilters({...galleryFilters, stop_id: v})}>
+                      <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {busStops.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {(galleryFilters.search || galleryFilters.categoria !== '' || galleryFilters.route_id !== '' || galleryFilters.stop_id !== '') && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-3"
+                    onClick={() => setGalleryFilters({ search: '', categoria: '', route_id: '', stop_id: '' })}
+                  >
+                    <X size={14} className="mr-1" />Limpiar Filtros
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Galería ({(() => {
+                let filtered = images;
+                if (galleryFilters.search) {
+                  filtered = filtered.filter(i => i.titulo?.toLowerCase().includes(galleryFilters.search.toLowerCase()));
+                }
+                if (galleryFilters.categoria && galleryFilters.categoria !== 'all') {
+                  filtered = filtered.filter(i => i.categoria === galleryFilters.categoria);
+                }
+                if (galleryFilters.stop_id && galleryFilters.stop_id !== 'all') {
+                  filtered = filtered.filter(i => i.bus_stop_ids?.includes(galleryFilters.stop_id));
+                }
+                if (galleryFilters.route_id && galleryFilters.route_id !== 'all') {
+                  const stopsInRoute = busStops.filter(s => s.route_id === galleryFilters.route_id).map(s => s.id);
+                  filtered = filtered.filter(i => i.bus_stop_ids?.some((id: string) => stopsInRoute.includes(id)));
+                }
+                return filtered.length;
+              })()} imágenes)</CardTitle></CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {images.map(img => (
+                  {(() => {
+                    let filtered = images;
+                    if (galleryFilters.search) {
+                      filtered = filtered.filter(i => i.titulo?.toLowerCase().includes(galleryFilters.search.toLowerCase()));
+                    }
+                    if (galleryFilters.categoria && galleryFilters.categoria !== 'all') {
+                      filtered = filtered.filter(i => i.categoria === galleryFilters.categoria);
+                    }
+                    if (galleryFilters.stop_id && galleryFilters.stop_id !== 'all') {
+                      filtered = filtered.filter(i => i.bus_stop_ids?.includes(galleryFilters.stop_id));
+                    }
+                    if (galleryFilters.route_id && galleryFilters.route_id !== 'all') {
+                      const stopsInRoute = busStops.filter(s => s.route_id === galleryFilters.route_id).map(s => s.id);
+                      filtered = filtered.filter(i => i.bus_stop_ids?.some((id: string) => stopsInRoute.includes(id)));
+                    }
+                    return filtered;
+                  })().map(img => (
                     <Card key={img.id} className="overflow-hidden">
-                      <div className="aspect-video bg-muted relative">
+                      <div className="aspect-video bg-muted relative group">
                         {img.imagen_url && (
                           <img src={img.imagen_url} alt={img.titulo} className="w-full h-full object-cover" />
                         )}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button size="sm" variant="secondary" onClick={() => setEditingImage(img)}>
+                            <Eye size={14} className="mr-1" />Ver/Editar
+                          </Button>
+                        </div>
                       </div>
                       <CardContent className="p-3">
                         <h4 className="font-medium truncate">{img.titulo}</h4>
@@ -1102,15 +1211,114 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                             📍 {img.bus_stop_ids.length} parada(s) vinculada(s)
                           </p>
                         )}
-                        <Button size="sm" variant="destructive" className="w-full mt-2" onClick={() => handleDeleteImage(img.id)}>
-                          <Trash2 size={14} className="mr-1" />Eliminar
-                        </Button>
+                        <div className="flex gap-1 mt-2">
+                          <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditingImage(img)}>
+                            <Edit size={14} />
+                          </Button>
+                          <Button size="sm" variant="destructive" className="flex-1" onClick={() => handleDeleteImage(img.id)}>
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
               </CardContent>
             </Card>
+
+            {/* Dialog para editar imagen */}
+            <Dialog open={!!editingImage} onOpenChange={() => setEditingImage(null)}>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Editar Imagen</DialogTitle>
+                </DialogHeader>
+                {editingImage && (
+                  <div className="space-y-4">
+                    <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                      <img src={editingImage.imagen_url} alt={editingImage.titulo} className="w-full h-full object-contain" />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Título</Label>
+                        <Input 
+                          value={editingImage.titulo} 
+                          onChange={(e) => setEditingImage({...editingImage, titulo: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label>Categoría</Label>
+                        <Input 
+                          value={editingImage.categoria || ''} 
+                          onChange={(e) => setEditingImage({...editingImage, categoria: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label>Descripción</Label>
+                      <Input 
+                        value={editingImage.descripcion || ''} 
+                        onChange={(e) => setEditingImage({...editingImage, descripcion: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label>Paradas Vinculadas</Label>
+                      <div className="border rounded p-3 max-h-40 overflow-y-auto mt-1">
+                        {busStops.map(stop => (
+                          <div key={stop.id} className="flex items-center gap-2 py-1">
+                            <Checkbox
+                              id={`edit-stop-${stop.id}`}
+                              checked={editingImage.bus_stop_ids?.includes(stop.id) || false}
+                              onCheckedChange={(checked) => {
+                                const currentIds = editingImage.bus_stop_ids || [];
+                                if (checked) {
+                                  setEditingImage({...editingImage, bus_stop_ids: [...currentIds, stop.id]});
+                                } else {
+                                  setEditingImage({...editingImage, bus_stop_ids: currentIds.filter((id: string) => id !== stop.id)});
+                                }
+                              }}
+                            />
+                            <label htmlFor={`edit-stop-${stop.id}`} className="text-sm cursor-pointer">
+                              {stop.name}
+                              {stop.bus_routes && (
+                                <span className="text-xs text-muted-foreground ml-2">({stop.bus_routes.name})</span>
+                              )}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        className="flex-1"
+                        onClick={async () => {
+                          const { error } = await supabase.from('galeria_maneiro').update({
+                            titulo: editingImage.titulo,
+                            descripcion: editingImage.descripcion,
+                            categoria: editingImage.categoria,
+                            bus_stop_ids: editingImage.bus_stop_ids || []
+                          }).eq('id', editingImage.id);
+
+                          if (error) {
+                            toast({ title: "Error", description: error.message, variant: "destructive" });
+                          } else {
+                            toast({ title: "Éxito", description: "Imagen actualizada" });
+                            setEditingImage(null);
+                            loadImages();
+                          }
+                        }}
+                      >
+                        <Save size={16} className="mr-2" />Guardar Cambios
+                      </Button>
+                      <Button variant="outline" onClick={() => setEditingImage(null)}>Cancelar</Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
         );
       default:
