@@ -12,12 +12,20 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Edit, Trash2, Save, X, Upload, Clock, DollarSign } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Plus, Edit, Trash2, Save, X, Upload, Clock, DollarSign, Eye, User, Search, Filter } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
 interface AdminDashboardProps {
   onLogout: () => void;
+}
+
+interface Driver {
+  id: string;
+  full_name: string | null;
+  username: string | null;
+  phone: string | null;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
@@ -42,20 +50,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     arrival_time: '21:00'
   });
 
-  // Bus stops state
+  // Multi-route selection for bulk fare editing
+  const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>([]);
+  const [bulkFareDialogOpen, setBulkFareDialogOpen] = useState(false);
+  const [bulkFares, setBulkFares] = useState({ short_route: '', long_route: '' });
+
+  // Bus stops state - using single coordinate field
   const [busStops, setBusStops] = useState<any[]>([]);
   const [newBusStop, setNewBusStop] = useState({
     name: '',
-    latitude: '',
-    longitude: '',
+    coordinates: '', // Single field for "lat, lng"
     stop_order: '',
     route_id: ''
   });
 
-  // Vehicles state
+  // Vehicles state with driver info
   const [vehicles, setVehicles] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [editingVehicle, setEditingVehicle] = useState<string | null>(null);
   const [editVehicleData, setEditVehicleData] = useState<any>({});
+  const [vehicleDetailDialog, setVehicleDetailDialog] = useState<any>(null);
   const [newVehicle, setNewVehicle] = useState({
     license_plate: '',
     model: '',
@@ -64,9 +78,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     route_id: ''
   });
 
-  // Gallery state
+  // Gallery state with filters and editing
   const [images, setImages] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [editingImage, setEditingImage] = useState<any>(null);
+  const [galleryFilters, setGalleryFilters] = useState({
+    search: '',
+    categoria: '',
+    route_id: '',
+    stop_id: ''
+  });
   const [newImage, setNewImage] = useState({
     titulo: '',
     descripcion: '',
@@ -84,6 +105,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     loadBusStops();
     loadVehicles();
     loadImages();
+    loadDrivers();
   }, []);
 
   const loadParroquias = async () => {
@@ -117,6 +139,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       .select('*, bus_routes(name)')
       .order('license_plate');
     setVehicles(data || []);
+  };
+
+  const loadDrivers = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name, username, phone')
+      .eq('user_type', 'driver');
+    setDrivers(data || []);
+  };
+
+  const getDriverForVehicle = (driverId: string | null): Driver | undefined => {
+    return drivers.find(d => d.id === driverId);
+  };
   };
 
   const loadImages = async () => {
@@ -170,17 +205,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  // Bus stop handlers
+  // Bus stop handlers - using single coordinate field
+  const parseCoordinates = (coordStr: string): { lat: number; lng: number } | null => {
+    const trimmed = coordStr.trim();
+    const parts = trimmed.split(',').map(p => p.trim());
+    if (parts.length === 2) {
+      const lat = parseFloat(parts[0]);
+      const lng = parseFloat(parts[1]);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        return { lat, lng };
+      }
+    }
+    return null;
+  };
+
   const handleAddBusStop = async () => {
-    if (!newBusStop.name || !newBusStop.latitude || !newBusStop.longitude) {
+    if (!newBusStop.name || !newBusStop.coordinates) {
       toast({ title: "Error", description: "Complete los campos obligatorios", variant: "destructive" });
+      return;
+    }
+
+    const coords = parseCoordinates(newBusStop.coordinates);
+    if (!coords) {
+      toast({ title: "Error", description: "Formato de coordenadas inválido. Use: latitud, longitud (ej: 10.963742, -63.842669)", variant: "destructive" });
       return;
     }
 
     const { error } = await supabase.from('bus_stops').insert([{
       name: newBusStop.name,
-      latitude: parseFloat(newBusStop.latitude),
-      longitude: parseFloat(newBusStop.longitude),
+      latitude: coords.lat,
+      longitude: coords.lng,
       stop_order: parseInt(newBusStop.stop_order) || 0,
       route_id: newBusStop.route_id || null
     }]);
@@ -189,7 +243,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Éxito", description: "Parada creada" });
-      setNewBusStop({ name: '', latitude: '', longitude: '', stop_order: '', route_id: '' });
+      setNewBusStop({ name: '', coordinates: '', stop_order: '', route_id: '' });
       loadBusStops();
     }
   };
@@ -441,6 +495,125 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               </CardContent>
             </Card>
 
+            {/* Selección múltiple para edición masiva de tarifas */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign size={20} />
+                  Edición Masiva de Tarifas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        if (selectedRouteIds.length === routes.length) {
+                          setSelectedRouteIds([]);
+                        } else {
+                          setSelectedRouteIds(routes.map(r => r.id));
+                        }
+                      }}
+                    >
+                      {selectedRouteIds.length === routes.length ? 'Deseleccionar Todas' : 'Seleccionar Todas'}
+                    </Button>
+                    {selectedRouteIds.length > 0 && (
+                      <Button onClick={() => setBulkFareDialogOpen(true)}>
+                        <DollarSign size={16} className="mr-2" />
+                        Editar Tarifas ({selectedRouteIds.length} rutas)
+                      </Button>
+                    )}
+                  </div>
+                  <div className="border rounded p-3 max-h-48 overflow-y-auto">
+                    {routes.map(route => (
+                      <div key={route.id} className="flex items-center gap-2 py-1">
+                        <Checkbox
+                          id={`route-select-${route.id}`}
+                          checked={selectedRouteIds.includes(route.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedRouteIds([...selectedRouteIds, route.id]);
+                            } else {
+                              setSelectedRouteIds(selectedRouteIds.filter(id => id !== route.id));
+                            }
+                          }}
+                        />
+                        <label htmlFor={`route-select-${route.id}`} className="text-sm cursor-pointer flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: route.color }} />
+                          {route.name}
+                          <span className="text-xs text-muted-foreground">
+                            (Corta: {route.short_route || '-'} | Larga: {route.long_route || '-'})
+                          </span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dialog para edición masiva */}
+            <Dialog open={bulkFareDialogOpen} onOpenChange={setBulkFareDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Editar Tarifas de {selectedRouteIds.length} Rutas</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Nueva Tarifa Corta (Bs)</Label>
+                    <Input 
+                      value={bulkFares.short_route} 
+                      onChange={(e) => setBulkFares({...bulkFares, short_route: e.target.value})}
+                      placeholder="Ej: 2.50"
+                    />
+                  </div>
+                  <div>
+                    <Label>Nueva Tarifa Larga (Bs)</Label>
+                    <Input 
+                      value={bulkFares.long_route} 
+                      onChange={(e) => setBulkFares({...bulkFares, long_route: e.target.value})}
+                      placeholder="Ej: 4.00"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      className="flex-1"
+                      onClick={async () => {
+                        const updateData: any = {};
+                        if (bulkFares.short_route) updateData.short_route = bulkFares.short_route;
+                        if (bulkFares.long_route) updateData.long_route = bulkFares.long_route;
+                        
+                        if (Object.keys(updateData).length === 0) {
+                          toast({ title: "Error", description: "Ingrese al menos una tarifa", variant: "destructive" });
+                          return;
+                        }
+
+                        const { error } = await supabase
+                          .from('bus_routes')
+                          .update(updateData)
+                          .in('id', selectedRouteIds);
+
+                        if (error) {
+                          toast({ title: "Error", description: error.message, variant: "destructive" });
+                        } else {
+                          toast({ title: "Éxito", description: `Tarifas actualizadas en ${selectedRouteIds.length} rutas` });
+                          setBulkFareDialogOpen(false);
+                          setBulkFares({ short_route: '', long_route: '' });
+                          setSelectedRouteIds([]);
+                          loadRoutes();
+                        }
+                      }}
+                    >
+                      <Save size={16} className="mr-2" />Guardar Cambios
+                    </Button>
+                    <Button variant="outline" onClick={() => setBulkFareDialogOpen(false)}>Cancelar</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <Card>
               <CardHeader><CardTitle>Rutas Registradas</CardTitle></CardHeader>
               <CardContent>
@@ -494,18 +667,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             <Card>
               <CardHeader><CardTitle>Agregar Parada</CardTitle></CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <Label>Nombre *</Label>
-                    <Input value={newBusStop.name} onChange={(e) => setNewBusStop({...newBusStop, name: e.target.value})} />
+                    <Input value={newBusStop.name} onChange={(e) => setNewBusStop({...newBusStop, name: e.target.value})} placeholder="Nombre de la parada" />
                   </div>
                   <div>
-                    <Label>Latitud *</Label>
-                    <Input type="number" step="0.000001" value={newBusStop.latitude} onChange={(e) => setNewBusStop({...newBusStop, latitude: e.target.value})} />
-                  </div>
-                  <div>
-                    <Label>Longitud *</Label>
-                    <Input type="number" step="0.000001" value={newBusStop.longitude} onChange={(e) => setNewBusStop({...newBusStop, longitude: e.target.value})} />
+                    <Label>Coordenadas * (lat, lng)</Label>
+                    <Input 
+                      value={newBusStop.coordinates} 
+                      onChange={(e) => setNewBusStop({...newBusStop, coordinates: e.target.value})} 
+                      placeholder="10.963742, -63.842669"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Formato: latitud, longitud</p>
                   </div>
                   <div>
                     <Label>Orden</Label>
@@ -619,92 +793,176 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <TableHead>Modelo</TableHead>
                       <TableHead>Capacidad</TableHead>
                       <TableHead>Estado</TableHead>
+                      <TableHead>Conductor</TableHead>
                       <TableHead>Ruta</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {vehicles.map(v => (
-                      <TableRow key={v.id}>
-                        <TableCell className="font-mono">
-                          {editingVehicle === v.id ? (
-                            <Input value={editVehicleData.license_plate} onChange={(e) => setEditVehicleData({...editVehicleData, license_plate: e.target.value})} />
-                          ) : v.license_plate}
-                        </TableCell>
-                        <TableCell>
-                          {editingVehicle === v.id ? (
-                            <Input value={editVehicleData.model || ''} onChange={(e) => setEditVehicleData({...editVehicleData, model: e.target.value})} />
-                          ) : (v.model || '-')}
-                        </TableCell>
-                        <TableCell>
-                          {editingVehicle === v.id ? (
-                            <Input type="number" value={editVehicleData.capacity} onChange={(e) => setEditVehicleData({...editVehicleData, capacity: parseInt(e.target.value) || 30})} className="w-20" />
-                          ) : v.capacity}
-                        </TableCell>
-                        <TableCell>
-                          {editingVehicle === v.id ? (
-                            <Select value={editVehicleData.status} onValueChange={(val) => setEditVehicleData({...editVehicleData, status: val})}>
-                              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="active">Activo</SelectItem>
-                                <SelectItem value="inactive">Inactivo</SelectItem>
-                                <SelectItem value="maintenance">Mantenimiento</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              v.status === 'active' ? 'bg-green-100 text-green-700' :
-                              v.status === 'maintenance' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-red-100 text-red-700'
-                            }`}>
-                              {v.status === 'active' ? 'Activo' : v.status === 'maintenance' ? 'Mantenimiento' : 'Inactivo'}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingVehicle === v.id ? (
-                            <Select value={editVehicleData.route_id || ''} onValueChange={(val) => setEditVehicleData({...editVehicleData, route_id: val})}>
-                              <SelectTrigger className="w-32"><SelectValue placeholder="Ninguna" /></SelectTrigger>
-                              <SelectContent>
-                                {routes.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          ) : (v.bus_routes?.name || '-')}
-                        </TableCell>
-                        <TableCell className="text-right space-x-2">
-                          {editingVehicle === v.id ? (
-                            <>
-                              <Button size="sm" onClick={async () => {
-                                const { error } = await supabase.from('vehicles').update({
-                                  license_plate: editVehicleData.license_plate,
-                                  model: editVehicleData.model,
-                                  capacity: editVehicleData.capacity,
-                                  status: editVehicleData.status,
-                                  route_id: editVehicleData.route_id || null
-                                }).eq('id', v.id);
-                                if (error) {
-                                  toast({ title: "Error", description: error.message, variant: "destructive" });
-                                } else {
-                                  toast({ title: "Éxito", description: "Vehículo actualizado" });
-                                  setEditingVehicle(null);
-                                  loadVehicles();
-                                }
-                              }}><Save size={16} /></Button>
-                              <Button size="sm" variant="outline" onClick={() => setEditingVehicle(null)}><X size={16} /></Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button size="sm" variant="outline" onClick={() => { setEditingVehicle(v.id); setEditVehicleData(v); }}><Edit size={16} /></Button>
-                              <Button size="sm" variant="destructive" onClick={() => handleDeleteVehicle(v.id)}><Trash2 size={16} /></Button>
-                            </>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {vehicles.map(v => {
+                      const driver = getDriverForVehicle(v.driver_id);
+                      return (
+                        <TableRow key={v.id}>
+                          <TableCell className="font-mono">
+                            {editingVehicle === v.id ? (
+                              <Input value={editVehicleData.license_plate} onChange={(e) => setEditVehicleData({...editVehicleData, license_plate: e.target.value})} />
+                            ) : v.license_plate}
+                          </TableCell>
+                          <TableCell>
+                            {editingVehicle === v.id ? (
+                              <Input value={editVehicleData.model || ''} onChange={(e) => setEditVehicleData({...editVehicleData, model: e.target.value})} />
+                            ) : (v.model || '-')}
+                          </TableCell>
+                          <TableCell>
+                            {editingVehicle === v.id ? (
+                              <Input type="number" value={editVehicleData.capacity} onChange={(e) => setEditVehicleData({...editVehicleData, capacity: parseInt(e.target.value) || 30})} className="w-20" />
+                            ) : v.capacity}
+                          </TableCell>
+                          <TableCell>
+                            {editingVehicle === v.id ? (
+                              <Select value={editVehicleData.status} onValueChange={(val) => setEditVehicleData({...editVehicleData, status: val})}>
+                                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="active">Activo</SelectItem>
+                                  <SelectItem value="inactive">Inactivo</SelectItem>
+                                  <SelectItem value="maintenance">Mantenimiento</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                v.status === 'active' ? 'bg-green-100 text-green-700' :
+                                v.status === 'maintenance' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-red-100 text-red-700'
+                              }`}>
+                                {v.status === 'active' ? 'Activo' : v.status === 'maintenance' ? 'Mantenimiento' : 'Inactivo'}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {driver ? (
+                              <span className="text-sm">{driver.full_name || driver.username || 'Sin nombre'}</span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">Sin asignar</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {editingVehicle === v.id ? (
+                              <Select value={editVehicleData.route_id || ''} onValueChange={(val) => setEditVehicleData({...editVehicleData, route_id: val})}>
+                                <SelectTrigger className="w-32"><SelectValue placeholder="Ninguna" /></SelectTrigger>
+                                <SelectContent>
+                                  {routes.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            ) : (v.bus_routes?.name || '-')}
+                          </TableCell>
+                          <TableCell className="text-right space-x-1">
+                            {editingVehicle === v.id ? (
+                              <>
+                                <Button size="sm" onClick={async () => {
+                                  const { error } = await supabase.from('vehicles').update({
+                                    license_plate: editVehicleData.license_plate,
+                                    model: editVehicleData.model,
+                                    capacity: editVehicleData.capacity,
+                                    status: editVehicleData.status,
+                                    route_id: editVehicleData.route_id || null
+                                  }).eq('id', v.id);
+                                  if (error) {
+                                    toast({ title: "Error", description: error.message, variant: "destructive" });
+                                  } else {
+                                    toast({ title: "Éxito", description: "Vehículo actualizado" });
+                                    setEditingVehicle(null);
+                                    loadVehicles();
+                                  }
+                                }}><Save size={16} /></Button>
+                                <Button size="sm" variant="outline" onClick={() => setEditingVehicle(null)}><X size={16} /></Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button size="sm" variant="outline" onClick={() => setVehicleDetailDialog({ vehicle: v, driver })} title="Ver información">
+                                  <Eye size={16} />
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => { setEditingVehicle(v.id); setEditVehicleData(v); }} title="Editar">
+                                  <Edit size={16} />
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleDeleteVehicle(v.id)} title="Eliminar">
+                                  <Trash2 size={16} />
+                                </Button>
+                              </>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
             </Card>
+
+            {/* Dialog para información completa del vehículo */}
+            <Dialog open={!!vehicleDetailDialog} onOpenChange={() => setVehicleDetailDialog(null)}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Información del Vehículo</DialogTitle>
+                </DialogHeader>
+                {vehicleDetailDialog && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Placa</Label>
+                        <p className="font-mono font-bold text-lg">{vehicleDetailDialog.vehicle.license_plate}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Modelo</Label>
+                        <p className="font-medium">{vehicleDetailDialog.vehicle.model || '-'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Capacidad</Label>
+                        <p className="font-medium">{vehicleDetailDialog.vehicle.capacity} pasajeros</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Estado</Label>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          vehicleDetailDialog.vehicle.status === 'active' ? 'bg-green-100 text-green-700' :
+                          vehicleDetailDialog.vehicle.status === 'maintenance' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {vehicleDetailDialog.vehicle.status === 'active' ? 'Activo' : vehicleDetailDialog.vehicle.status === 'maintenance' ? 'Mantenimiento' : 'Inactivo'}
+                        </span>
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-muted-foreground text-xs">Ruta Asignada</Label>
+                        <p className="font-medium">{vehicleDetailDialog.vehicle.bus_routes?.name || 'Sin ruta asignada'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="border-t pt-4">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <User size={16} />
+                        Conductor Asignado
+                      </h4>
+                      {vehicleDetailDialog.driver ? (
+                        <div className="grid grid-cols-2 gap-4 bg-muted/30 p-3 rounded-lg">
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Nombre</Label>
+                            <p className="font-medium">{vehicleDetailDialog.driver.full_name || '-'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Usuario</Label>
+                            <p className="font-medium">{vehicleDetailDialog.driver.username || '-'}</p>
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-muted-foreground text-xs">Teléfono</Label>
+                            <p className="font-medium">{vehicleDetailDialog.driver.phone || '-'}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground">No hay conductor asignado a este vehículo</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
         );
       case 'gallery':
