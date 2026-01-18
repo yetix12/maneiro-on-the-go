@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminSidebar from './admin/AdminSidebar';
 import DashboardOverview from './admin/DashboardOverview';
-import ParroquiasManager from './admin/ParroquiasManager';
+import MunicipiosManager from './admin/MunicipiosManager';
 import AdminsManager from './admin/AdminsManager';
 import UsersManager from './admin/UsersManager';
 import StatisticsPanel from './admin/StatisticsPanel';
@@ -96,11 +96,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     bus_stop_ids: [] as string[]
   });
 
-  // Parroquias for selects
-  const [parroquias, setParroquias] = useState<any[]>([]);
+  // Municipios for selects
+  const [municipios, setMunicipios] = useState<any[]>([]);
 
   useEffect(() => {
-    loadParroquias();
+    loadMunicipios();
     loadRoutes();
     loadBusStops();
     loadVehicles();
@@ -108,12 +108,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     loadDrivers();
   }, []);
 
-  const loadParroquias = async () => {
+  const loadMunicipios = async () => {
     const { data } = await supabase
       .from('parroquias')
       .select('id, nombre')
       .eq('is_active', true);
-    setParroquias(data || []);
+    setMunicipios(data || []);
   };
 
   const loadRoutes = async () => {
@@ -151,7 +151,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const getDriverForVehicle = (driverId: string | null): Driver | undefined => {
     return drivers.find(d => d.id === driverId);
-  };
   };
 
   const loadImages = async () => {
@@ -326,8 +325,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardOverview />;
-      case 'parroquias':
-        return <ParroquiasManager />;
+      case 'municipios':
+        return <MunicipiosManager />;
       case 'admins':
         return <AdminsManager />;
       case 'users':
@@ -476,11 +475,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <Input type="time" value={newRoute.arrival_time} onChange={(e) => setNewRoute({...newRoute, arrival_time: e.target.value})} />
                   </div>
                   <div>
-                    <Label>Parroquia</Label>
+                    <Label>Municipio</Label>
                     <Select value={newRoute.parroquia_id} onValueChange={(v) => setNewRoute({...newRoute, parroquia_id: v})}>
                       <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                       <SelectContent>
-                        {parroquias.map(p => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}
+                        {municipios.map(m => <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
