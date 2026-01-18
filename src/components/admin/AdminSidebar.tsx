@@ -22,7 +22,7 @@ interface AdminSidebarProps {
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'parroquias', label: 'Parroquias', icon: Building2 },
+  { id: 'municipios', label: 'Municipios', icon: Building2 },
   { id: 'admins', label: 'Administradores', icon: Shield },
   { id: 'users', label: 'Usuarios', icon: Users },
   { id: 'routes', label: 'Rutas', icon: Map },

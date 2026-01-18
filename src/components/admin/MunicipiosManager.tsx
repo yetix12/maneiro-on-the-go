@@ -8,7 +8,7 @@ import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
-interface Parroquia {
+interface Municipio {
   id: string;
   nombre: string;
   municipio: string | null;
@@ -16,24 +16,24 @@ interface Parroquia {
   descripcion: string | null;
 }
 
-const ParroquiasManager: React.FC = () => {
+const MunicipiosManager: React.FC = () => {
   const { toast } = useToast();
-  const [parroquias, setParroquias] = useState<Parroquia[]>([]);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [newParroquia, setNewParroquia] = useState({
+  const [newMunicipio, setNewMunicipio] = useState({
     nombre: '',
     municipio: '',
     estado: 'Nueva Esparta',
     descripcion: ''
   });
-  const [editData, setEditData] = useState<Partial<Parroquia>>({});
+  const [editData, setEditData] = useState<Partial<Municipio>>({});
 
   useEffect(() => {
-    loadParroquias();
+    loadMunicipios();
   }, []);
 
-  const loadParroquias = async () => {
+  const loadMunicipios = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -42,11 +42,11 @@ const ParroquiasManager: React.FC = () => {
         .order('nombre');
 
       if (error) throw error;
-      setParroquias(data || []);
+      setMunicipios(data || []);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "No se pudieron cargar las parroquias",
+        description: error.message || "No se pudieron cargar los municipios",
         variant: "destructive"
       });
     } finally {
@@ -55,7 +55,7 @@ const ParroquiasManager: React.FC = () => {
   };
 
   const handleAdd = async () => {
-    if (!newParroquia.nombre) {
+    if (!newMunicipio.nombre) {
       toast({
         title: "Error",
         description: "El nombre es obligatorio",
@@ -67,25 +67,25 @@ const ParroquiasManager: React.FC = () => {
     try {
       const { error } = await supabase
         .from('parroquias')
-        .insert([newParroquia]);
+        .insert([newMunicipio]);
 
       if (error) throw error;
 
-      toast({ title: "Éxito", description: "Parroquia creada exitosamente" });
-      setNewParroquia({ nombre: '', municipio: '', estado: 'Nueva Esparta', descripcion: '' });
-      loadParroquias();
+      toast({ title: "Éxito", description: "Municipio creado exitosamente" });
+      setNewMunicipio({ nombre: '', municipio: '', estado: 'Nueva Esparta', descripcion: '' });
+      loadMunicipios();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "No se pudo crear la parroquia",
+        description: error.message || "No se pudo crear el municipio",
         variant: "destructive"
       });
     }
   };
 
-  const handleEdit = (parroquia: Parroquia) => {
-    setEditingId(parroquia.id);
-    setEditData(parroquia);
+  const handleEdit = (municipio: Municipio) => {
+    setEditingId(municipio.id);
+    setEditData(municipio);
   };
 
   const handleSave = async () => {
@@ -104,9 +104,9 @@ const ParroquiasManager: React.FC = () => {
 
       if (error) throw error;
 
-      toast({ title: "Éxito", description: "Parroquia actualizada" });
+      toast({ title: "Éxito", description: "Municipio actualizado" });
       setEditingId(null);
-      loadParroquias();
+      loadMunicipios();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -117,7 +117,7 @@ const ParroquiasManager: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta parroquia?')) return;
+    if (!confirm('¿Estás seguro de eliminar este municipio?')) return;
 
     try {
       const { error } = await supabase
@@ -127,8 +127,8 @@ const ParroquiasManager: React.FC = () => {
 
       if (error) throw error;
 
-      toast({ title: "Éxito", description: "Parroquia eliminada" });
-      loadParroquias();
+      toast({ title: "Éxito", description: "Municipio eliminado" });
+      loadMunicipios();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -142,31 +142,31 @@ const ParroquiasManager: React.FC = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Agregar Nueva Parroquia</CardTitle>
+          <CardTitle>Agregar Nuevo Municipio</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label>Nombre *</Label>
               <Input
-                value={newParroquia.nombre}
-                onChange={(e) => setNewParroquia({ ...newParroquia, nombre: e.target.value })}
-                placeholder="Nombre de la parroquia"
+                value={newMunicipio.nombre}
+                onChange={(e) => setNewMunicipio({ ...newMunicipio, nombre: e.target.value })}
+                placeholder="Nombre del municipio"
               />
             </div>
             <div>
-              <Label>Municipio</Label>
+              <Label>Zona/Área</Label>
               <Input
-                value={newParroquia.municipio}
-                onChange={(e) => setNewParroquia({ ...newParroquia, municipio: e.target.value })}
-                placeholder="Municipio"
+                value={newMunicipio.municipio}
+                onChange={(e) => setNewMunicipio({ ...newMunicipio, municipio: e.target.value })}
+                placeholder="Zona o área"
               />
             </div>
             <div>
               <Label>Estado</Label>
               <Input
-                value={newParroquia.estado}
-                onChange={(e) => setNewParroquia({ ...newParroquia, estado: e.target.value })}
+                value={newMunicipio.estado}
+                onChange={(e) => setNewMunicipio({ ...newMunicipio, estado: e.target.value })}
                 placeholder="Estado"
               />
             </div>
@@ -182,53 +182,53 @@ const ParroquiasManager: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Parroquias Registradas</CardTitle>
+          <CardTitle>Municipios Registrados</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
-                <TableHead>Municipio</TableHead>
+                <TableHead>Zona/Área</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {parroquias.map((parroquia) => (
-                <TableRow key={parroquia.id}>
+              {municipios.map((municipio) => (
+                <TableRow key={municipio.id}>
                   <TableCell>
-                    {editingId === parroquia.id ? (
+                    {editingId === municipio.id ? (
                       <Input
                         value={editData.nombre || ''}
                         onChange={(e) => setEditData({ ...editData, nombre: e.target.value })}
                       />
                     ) : (
-                      parroquia.nombre
+                      municipio.nombre
                     )}
                   </TableCell>
                   <TableCell>
-                    {editingId === parroquia.id ? (
+                    {editingId === municipio.id ? (
                       <Input
                         value={editData.municipio || ''}
                         onChange={(e) => setEditData({ ...editData, municipio: e.target.value })}
                       />
                     ) : (
-                      parroquia.municipio || '-'
+                      municipio.municipio || '-'
                     )}
                   </TableCell>
                   <TableCell>
-                    {editingId === parroquia.id ? (
+                    {editingId === municipio.id ? (
                       <Input
                         value={editData.estado || ''}
                         onChange={(e) => setEditData({ ...editData, estado: e.target.value })}
                       />
                     ) : (
-                      parroquia.estado || '-'
+                      municipio.estado || '-'
                     )}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
-                    {editingId === parroquia.id ? (
+                    {editingId === municipio.id ? (
                       <>
                         <Button size="sm" onClick={handleSave}>
                           <Save size={16} />
@@ -239,10 +239,10 @@ const ParroquiasManager: React.FC = () => {
                       </>
                     ) : (
                       <>
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(parroquia)}>
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(municipio)}>
                           <Edit size={16} />
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDelete(parroquia.id)}>
+                        <Button size="sm" variant="destructive" onClick={() => handleDelete(municipio.id)}>
                           <Trash2 size={16} />
                         </Button>
                       </>
@@ -258,4 +258,4 @@ const ParroquiasManager: React.FC = () => {
   );
 };
 
-export default ParroquiasManager;
+export default MunicipiosManager;

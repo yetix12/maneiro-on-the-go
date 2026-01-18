@@ -19,7 +19,7 @@ interface UserRole {
     full_name: string | null;
     username: string | null;
   };
-  parroquia?: {
+  municipio?: {
     nombre: string;
   };
 }
@@ -30,7 +30,7 @@ interface Profile {
   username: string | null;
 }
 
-interface Parroquia {
+interface Municipio {
   id: string;
   nombre: string;
 }
@@ -39,7 +39,7 @@ const AdminsManager: React.FC = () => {
   const { toast } = useToast();
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [parroquias, setParroquias] = useState<Parroquia[]>([]);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{
@@ -50,7 +50,7 @@ const AdminsManager: React.FC = () => {
     user_id: '',
     role: 'admin_parroquia' as 'admin_general' | 'admin_parroquia',
     parroquia_id: '',
-    new_name: '' // Para agregar nuevo nombre
+    new_name: ''
   });
 
   useEffect(() => {
@@ -75,28 +75,28 @@ const AdminsManager: React.FC = () => {
 
       if (profilesError) throw profilesError;
 
-      // Load parroquias
-      const { data: parroquiasData, error: parroquiasError } = await supabase
+      // Load municipios
+      const { data: municipiosData, error: municipiosError } = await supabase
         .from('parroquias')
         .select('id, nombre')
         .eq('is_active', true);
 
-      if (parroquiasError) throw parroquiasError;
+      if (municipiosError) throw municipiosError;
 
-      // Merge roles with profiles and parroquias
+      // Merge roles with profiles and municipios
       const enrichedRoles = (rolesData || []).map(role => {
         const profile = profilesData?.find(p => p.id === role.user_id);
-        const parroquia = parroquiasData?.find(p => p.id === role.parroquia_id);
+        const municipio = municipiosData?.find(m => m.id === role.parroquia_id);
         return {
           ...role,
           profile: profile || { full_name: null, username: null },
-          parroquia: parroquia || { nombre: '' }
+          municipio: municipio || { nombre: '' }
         };
       });
 
       setUserRoles(enrichedRoles);
       setProfiles(profilesData || []);
-      setParroquias(parroquiasData || []);
+      setMunicipios(municipiosData || []);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -121,7 +121,7 @@ const AdminsManager: React.FC = () => {
     if (newRole.role === 'admin_parroquia' && !newRole.parroquia_id) {
       toast({
         title: "Error",
-        description: "Selecciona una parroquia para el administrador de parroquia",
+        description: "Selecciona un municipio para el administrador de municipio",
         variant: "destructive"
       });
       return;
@@ -176,7 +176,7 @@ const AdminsManager: React.FC = () => {
       const role = userRoles.find(r => r.id === editingId);
       if (!role) return;
 
-      // Update role parroquia if applicable
+      // Update role municipio if applicable
       if (role.role === 'admin_parroquia') {
         const { error } = await supabase
           .from('user_roles')
@@ -283,7 +283,7 @@ const AdminsManager: React.FC = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin_parroquia">Administrador de Parroquia</SelectItem>
+                  <SelectItem value="admin_parroquia">Administrador de Municipio</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
@@ -292,18 +292,18 @@ const AdminsManager: React.FC = () => {
             </div>
             {newRole.role === 'admin_parroquia' && (
               <div>
-                <Label>Parroquia *</Label>
+                <Label>Municipio *</Label>
                 <Select
                   value={newRole.parroquia_id}
                   onValueChange={(value) => setNewRole({ ...newRole, parroquia_id: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar parroquia" />
+                    <SelectValue placeholder="Seleccionar municipio" />
                   </SelectTrigger>
                   <SelectContent>
-                    {parroquias.map((parroquia) => (
-                      <SelectItem key={parroquia.id} value={parroquia.id}>
-                        {parroquia.nombre}
+                    {municipios.map((municipio) => (
+                      <SelectItem key={municipio.id} value={municipio.id}>
+                        {municipio.nombre}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -344,7 +344,7 @@ const AdminsManager: React.FC = () => {
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Rol</TableHead>
-                <TableHead>Parroquia</TableHead>
+                <TableHead>Municipio</TableHead>
                 <TableHead>Fecha Asignación</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -369,7 +369,7 @@ const AdminsManager: React.FC = () => {
                         ? 'bg-purple-100 text-purple-700' 
                         : 'bg-blue-100 text-blue-700'
                     }`}>
-                      {role.role === 'admin_general' ? 'Admin General' : 'Admin Parroquia'}
+                      {role.role === 'admin_general' ? 'Admin General' : 'Admin Municipio'}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -382,13 +382,13 @@ const AdminsManager: React.FC = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {parroquias.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+                          {municipios.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     ) : (
-                      role.parroquia?.nombre || '-'
+                      role.municipio?.nombre || '-'
                     )}
                   </TableCell>
                   <TableCell>

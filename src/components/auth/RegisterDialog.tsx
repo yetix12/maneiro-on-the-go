@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +8,7 @@ import { AlertCircle, UserPlus, Phone, MapPin, Home } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
-interface Parroquia {
+interface Municipio {
   id: string;
   nombre: string;
   municipio: string | null;
@@ -23,8 +22,8 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
   const { signUp, loading } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
   const [error, setError] = useState('');
-  const [parroquias, setParroquias] = useState<Parroquia[]>([]);
-  const [loadingParroquias, setLoadingParroquias] = useState(false);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  const [loadingMunicipios, setLoadingMunicipios] = useState(false);
   
   const [registerData, setRegisterData] = useState({
     name: '',
@@ -37,15 +36,15 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
     direccion: ''
   });
 
-  // Cargar parroquias cuando se abre el diálogo
+  // Cargar municipios cuando se abre el diálogo
   useEffect(() => {
     if (showRegister) {
-      loadParroquias();
+      loadMunicipios();
     }
   }, [showRegister]);
 
-  const loadParroquias = async () => {
-    setLoadingParroquias(true);
+  const loadMunicipios = async () => {
+    setLoadingMunicipios(true);
     try {
       const { data, error } = await supabase
         .from('parroquias')
@@ -54,14 +53,14 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
         .order('nombre');
       
       if (error) {
-        console.error('Error loading parroquias:', error);
+        console.error('Error loading municipios:', error);
       } else {
-        setParroquias(data || []);
+        setMunicipios(data || []);
       }
     } catch (err) {
-      console.error('Error loading parroquias:', err);
+      console.error('Error loading municipios:', err);
     } finally {
-      setLoadingParroquias(false);
+      setLoadingMunicipios(false);
     }
   };
 
@@ -92,9 +91,9 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
       return;
     }
 
-    // Validar parroquia
+    // Validar municipio
     if (!registerData.parroquia_id) {
-      setError('Por favor selecciona tu parroquia de residencia');
+      setError('Por favor selecciona tu municipio de residencia');
       return;
     }
 
@@ -238,23 +237,23 @@ const RegisterDialog: React.FC<RegisterDialogProps> = ({ disabled = false }) => 
             />
           </div>
 
-          {/* Parroquia */}
+          {/* Municipio */}
           <div>
-            <Label htmlFor="parroquia" className="flex items-center gap-2">
+            <Label htmlFor="municipio" className="flex items-center gap-2">
               <MapPin size={14} />
-              Parroquia de residencia *
+              Municipio de residencia *
             </Label>
             <Select
               value={registerData.parroquia_id}
               onValueChange={(value) => setRegisterData({...registerData, parroquia_id: value})}
             >
-              <SelectTrigger id="parroquia">
-                <SelectValue placeholder={loadingParroquias ? "Cargando..." : "Selecciona tu parroquia"} />
+              <SelectTrigger id="municipio">
+                <SelectValue placeholder={loadingMunicipios ? "Cargando..." : "Selecciona tu municipio"} />
               </SelectTrigger>
               <SelectContent>
-                {parroquias.map((parroquia) => (
-                  <SelectItem key={parroquia.id} value={parroquia.id}>
-                    {parroquia.nombre} {parroquia.municipio ? `(${parroquia.municipio})` : ''}
+                {municipios.map((municipio) => (
+                  <SelectItem key={municipio.id} value={municipio.id}>
+                    {municipio.nombre} {municipio.municipio ? `(${municipio.municipio})` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>

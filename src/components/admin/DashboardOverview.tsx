@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Users, Map, MapPin, Building2, Bus, Image } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface Parroquia {
+interface Municipio {
   id: string;
   nombre: string;
 }
@@ -20,8 +20,8 @@ interface Stats {
 }
 
 const DashboardOverview: React.FC = () => {
-  const [parroquias, setParroquias] = useState<Parroquia[]>([]);
-  const [selectedParroquia, setSelectedParroquia] = useState<string>('all');
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  const [selectedMunicipio, setSelectedMunicipio] = useState<string>('all');
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     totalPassengers: 0,
@@ -34,53 +34,53 @@ const DashboardOverview: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadParroquias();
+    loadMunicipios();
   }, []);
 
   useEffect(() => {
     loadStats();
-  }, [selectedParroquia]);
+  }, [selectedMunicipio]);
 
-  const loadParroquias = async () => {
+  const loadMunicipios = async () => {
     const { data } = await supabase
       .from('parroquias')
       .select('id, nombre')
       .eq('is_active', true)
       .order('nombre');
-    setParroquias(data || []);
+    setMunicipios(data || []);
   };
 
   const loadStats = async () => {
     setLoading(true);
     try {
       // Build queries based on filter
-      const parroquiaFilter = selectedParroquia !== 'all' ? selectedParroquia : null;
+      const municipioFilter = selectedMunicipio !== 'all' ? selectedMunicipio : null;
 
       // Profiles queries
       let profilesQuery = supabase.from('profiles').select('*', { count: 'exact', head: true });
       let passengersQuery = supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('user_type', 'passenger');
       let driversQuery = supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('user_type', 'driver');
 
-      if (parroquiaFilter) {
-        profilesQuery = profilesQuery.eq('parroquia_id', parroquiaFilter);
-        passengersQuery = passengersQuery.eq('parroquia_id', parroquiaFilter);
-        driversQuery = driversQuery.eq('parroquia_id', parroquiaFilter);
+      if (municipioFilter) {
+        profilesQuery = profilesQuery.eq('parroquia_id', municipioFilter);
+        passengersQuery = passengersQuery.eq('parroquia_id', municipioFilter);
+        driversQuery = driversQuery.eq('parroquia_id', municipioFilter);
       }
 
       // Routes query
       let routesQuery = supabase.from('bus_routes').select('*', { count: 'exact', head: true }).eq('is_active', true);
-      if (parroquiaFilter) {
-        routesQuery = routesQuery.eq('parroquia_id', parroquiaFilter);
+      if (municipioFilter) {
+        routesQuery = routesQuery.eq('parroquia_id', municipioFilter);
       }
 
-      // For stops, we need to filter by routes that belong to the parroquia
+      // For stops, we need to filter by routes that belong to the municipio
       let stopsCount = 0;
-      if (parroquiaFilter) {
-        // Get routes for the parroquia first
+      if (municipioFilter) {
+        // Get routes for the municipio first
         const { data: routesData } = await supabase
           .from('bus_routes')
           .select('id')
-          .eq('parroquia_id', parroquiaFilter)
+          .eq('parroquia_id', municipioFilter)
           .eq('is_active', true);
         
         if (routesData && routesData.length > 0) {
@@ -96,13 +96,13 @@ const DashboardOverview: React.FC = () => {
         stopsCount = count || 0;
       }
 
-      // Vehicles - filter by route's parroquia if needed
+      // Vehicles - filter by route's municipio if needed
       let vehiclesCount = 0;
-      if (parroquiaFilter) {
+      if (municipioFilter) {
         const { data: routesData } = await supabase
           .from('bus_routes')
           .select('id')
-          .eq('parroquia_id', parroquiaFilter)
+          .eq('parroquia_id', municipioFilter)
           .eq('is_active', true);
         
         if (routesData && routesData.length > 0) {
@@ -118,10 +118,10 @@ const DashboardOverview: React.FC = () => {
         vehiclesCount = count || 0;
       }
 
-      // Images - filter by parroquia
+      // Images - filter by municipio
       let imagesQuery = supabase.from('galeria_maneiro').select('*', { count: 'exact', head: true });
-      if (parroquiaFilter) {
-        imagesQuery = imagesQuery.eq('parroquia_id', parroquiaFilter);
+      if (municipioFilter) {
+        imagesQuery = imagesQuery.eq('parroquia_id', municipioFilter);
       }
 
       const [
@@ -164,7 +164,7 @@ const DashboardOverview: React.FC = () => {
     { label: 'Imágenes', value: stats.totalImages, icon: Image, color: 'bg-amber-500' },
   ];
 
-  if (loading && parroquias.length === 0) {
+  if (loading && municipios.length === 0) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[...Array(7)].map((_, i) => (
@@ -185,14 +185,14 @@ const DashboardOverview: React.FC = () => {
           <h2 className="text-2xl font-bold">Panel de Control</h2>
           <p className="text-muted-foreground">Resumen general del sistema</p>
         </div>
-        <Select value={selectedParroquia} onValueChange={setSelectedParroquia}>
+        <Select value={selectedMunicipio} onValueChange={setSelectedMunicipio}>
           <SelectTrigger className="w-64">
-            <SelectValue placeholder="Filtrar por parroquia" />
+            <SelectValue placeholder="Filtrar por municipio" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas las Parroquias</SelectItem>
-            {parroquias.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+            <SelectItem value="all">Todos los Municipios</SelectItem>
+            {municipios.map((m) => (
+              <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
             ))}
           </SelectContent>
         </Select>
