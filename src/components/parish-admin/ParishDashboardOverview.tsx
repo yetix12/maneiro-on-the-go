@@ -70,7 +70,7 @@ const ParishDashboardOverview: React.FC<ParishDashboardOverviewProps> = ({ parro
       value: stats.totalUsers, 
       icon: Users, 
       color: 'bg-blue-500',
-      description: 'Usuarios registrados en la parroquia'
+      description: 'Usuarios registrados en el municipio'
     },
     { 
       title: 'Pasajeros', 
@@ -106,10 +106,10 @@ const ParishDashboardOverview: React.FC<ParishDashboardOverviewProps> = ({ parro
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">
-          Bienvenido al Panel de {parroquiaName || 'la Parroquia'}
+          Bienvenido al Panel de {parroquiaName || 'el Municipio'}
         </h1>
         <p className="text-gray-600 mt-2">
-          Gestiona usuarios, rutas y paradas de tu parroquia
+          Gestiona usuarios, rutas y paradas de tu municipio
         </p>
       </div>
 
@@ -164,7 +164,7 @@ const ParishDashboardOverview: React.FC<ParishDashboardOverviewProps> = ({ parro
 
         <Card>
           <CardHeader>
-            <CardTitle>Información de la Parroquia</CardTitle>
+            <CardTitle>Información del Municipio</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -173,7 +173,7 @@ const ParishDashboardOverview: React.FC<ParishDashboardOverviewProps> = ({ parro
                 <p className="font-medium">{parroquiaName || 'Cargando...'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">ID de Parroquia</p>
+                <p className="text-sm text-gray-500">ID de Municipio</p>
                 <p className="font-mono text-sm text-gray-600">{parroquiaId || 'N/A'}</p>
               </div>
             </div>
