@@ -35,7 +35,7 @@ const ParishAdminSidebar: React.FC<ParishAdminSidebarProps> = ({
     <aside className="w-64 bg-gradient-to-b from-emerald-900 to-emerald-800 min-h-screen flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-emerald-700">
-        <h1 className="text-xl font-bold text-white">Admin Parroquia</h1>
+        <h1 className="text-xl font-bold text-white">Admin Municipio</h1>
         <p className="text-sm text-emerald-300 truncate">{parroquiaName || 'Cargando...'}</p>
       </div>
 
