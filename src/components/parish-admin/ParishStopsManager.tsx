@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,8 +24,7 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
 
   const [newStop, setNewStop] = useState({
     name: '',
-    latitude: '',
-    longitude: '',
+    coordinates: '', // Single field for "lat, lng"
     stop_order: '',
     route_id: ''
   });
@@ -83,9 +81,29 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
     }
   };
 
+  // Parse coordinates from single field
+  const parseCoordinates = (coordStr: string): { lat: number; lng: number } | null => {
+    const trimmed = coordStr.trim();
+    const parts = trimmed.split(',').map(p => p.trim());
+    if (parts.length === 2) {
+      const lat = parseFloat(parts[0]);
+      const lng = parseFloat(parts[1]);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        return { lat, lng };
+      }
+    }
+    return null;
+  };
+
   const handleAddStop = async () => {
-    if (!newStop.name.trim() || !newStop.latitude || !newStop.longitude) {
-      toast({ title: "Error", description: "Nombre, latitud y longitud son obligatorios", variant: "destructive" });
+    if (!newStop.name.trim() || !newStop.coordinates) {
+      toast({ title: "Error", description: "Nombre y coordenadas son obligatorios", variant: "destructive" });
+      return;
+    }
+
+    const coords = parseCoordinates(newStop.coordinates);
+    if (!coords) {
+      toast({ title: "Error", description: "Formato de coordenadas inválido. Use: latitud, longitud (ej: 10.963742, -63.842669)", variant: "destructive" });
       return;
     }
 
@@ -94,8 +112,8 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
 
       const { error } = await supabase.from('bus_stops').insert([{
         name: newStop.name.trim(),
-        latitude: parseFloat(newStop.latitude),
-        longitude: parseFloat(newStop.longitude),
+        latitude: coords.lat,
+        longitude: coords.lng,
         stop_order: parseInt(newStop.stop_order) || 0,
         route_id: newStop.route_id || null
       }]);
@@ -105,8 +123,7 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
       toast({ title: "Éxito", description: "Parada creada correctamente" });
       setNewStop({
         name: '',
-        latitude: '',
-        longitude: '',
+        coordinates: '',
         stop_order: '',
         route_id: ''
       });
@@ -186,7 +203,7 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
             <CardTitle>Crear Nueva Parada</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label>Nombre *</Label>
                 <Input 
@@ -196,24 +213,13 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
                 />
               </div>
               <div>
-                <Label>Latitud *</Label>
+                <Label>Coordenadas * (lat, lng)</Label>
                 <Input 
-                  type="number"
-                  step="0.000001"
-                  value={newStop.latitude} 
-                  onChange={(e) => setNewStop({...newStop, latitude: e.target.value})}
-                  placeholder="10.123456"
+                  value={newStop.coordinates} 
+                  onChange={(e) => setNewStop({...newStop, coordinates: e.target.value})}
+                  placeholder="10.963742, -63.842669"
                 />
-              </div>
-              <div>
-                <Label>Longitud *</Label>
-                <Input 
-                  type="number"
-                  step="0.000001"
-                  value={newStop.longitude} 
-                  onChange={(e) => setNewStop({...newStop, longitude: e.target.value})}
-                  placeholder="-63.123456"
-                />
+                <p className="text-xs text-muted-foreground mt-1">Formato: latitud, longitud</p>
               </div>
               <div>
                 <Label>Orden</Label>
@@ -256,7 +262,7 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
 
       <Card>
         <CardHeader>
-          <CardTitle>Paradas de la Parroquia ({stops.length})</CardTitle>
+          <CardTitle>Paradas del Municipio ({stops.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
