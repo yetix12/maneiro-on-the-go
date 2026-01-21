@@ -4,10 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Save, X, Clock, DollarSign } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Plus, Edit, Trash2, Save, Clock, DollarSign } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -19,14 +18,17 @@ const ParishRoutesManager: React.FC<ParishRoutesManagerProps> = ({ parroquiaId }
   const { toast } = useToast();
   const [routes, setRoutes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [editingRoute, setEditingRoute] = useState<string | null>(null);
-  const [editRouteData, setEditRouteData] = useState<any>({});
-  const [showForm, setShowForm] = useState(false);
-  const [selectedRouteId, setSelectedRouteId] = useState<string>('');
+
+  // Dialogs
+  const [createRouteDialogOpen, setCreateRouteDialogOpen] = useState(false);
+  const [editRouteDialogOpen, setEditRouteDialogOpen] = useState(false);
+  const [bulkFareDialogOpen, setBulkFareDialogOpen] = useState(false);
+
+  // Edit state
+  const [editingRoute, setEditingRoute] = useState<any>(null);
 
   // Multi-route selection for bulk fare editing
   const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>([]);
-  const [bulkFareDialogOpen, setBulkFareDialogOpen] = useState(false);
   const [bulkFares, setBulkFares] = useState({ short_route: '', long_route: '' });
 
   const [newRoute, setNewRoute] = useState({
@@ -86,24 +88,33 @@ const ParishRoutesManager: React.FC<ParishRoutesManagerProps> = ({ parroquiaId }
       if (error) throw error;
 
       toast({ title: "Éxito", description: "Ruta creada correctamente" });
-      setNewRoute({
-        name: '',
-        description: '',
-        color: '#3B82F6',
-        short_route: '',
-        long_route: '',
-        route_identification: '',
-        frequency_minutes: '15',
-        departure_time: '05:30',
-        arrival_time: '21:00'
-      });
-      setShowForm(false);
+      resetNewRouteForm();
+      setCreateRouteDialogOpen(false);
       loadRoutes();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetNewRouteForm = () => {
+    setNewRoute({
+      name: '',
+      description: '',
+      color: '#3B82F6',
+      short_route: '',
+      long_route: '',
+      route_identification: '',
+      frequency_minutes: '15',
+      departure_time: '05:30',
+      arrival_time: '21:00'
+    });
+  };
+
+  const openEditDialog = (route: any) => {
+    setEditingRoute({ ...route });
+    setEditRouteDialogOpen(true);
   };
 
   const handleSaveRoute = async () => {
@@ -115,21 +126,22 @@ const ParishRoutesManager: React.FC<ParishRoutesManagerProps> = ({ parroquiaId }
       const { error } = await supabase
         .from('bus_routes')
         .update({
-          name: editRouteData.name,
-          description: editRouteData.description,
-          color: editRouteData.color,
-          short_route: editRouteData.short_route,
-          long_route: editRouteData.long_route,
-          route_identification: editRouteData.route_identification,
-          frequency_minutes: editRouteData.frequency_minutes,
-          departure_time: editRouteData.departure_time,
-          arrival_time: editRouteData.arrival_time
+          name: editingRoute.name,
+          description: editingRoute.description,
+          color: editingRoute.color,
+          short_route: editingRoute.short_route,
+          long_route: editingRoute.long_route,
+          route_identification: editingRoute.route_identification,
+          frequency_minutes: editingRoute.frequency_minutes,
+          departure_time: editingRoute.departure_time,
+          arrival_time: editingRoute.arrival_time
         })
-        .eq('id', editingRoute);
+        .eq('id', editingRoute.id);
 
       if (error) throw error;
 
       toast({ title: "Éxito", description: "Ruta actualizada" });
+      setEditRouteDialogOpen(false);
       setEditingRoute(null);
       loadRoutes();
     } catch (error: any) {
@@ -165,7 +177,7 @@ const ParishRoutesManager: React.FC<ParishRoutesManagerProps> = ({ parroquiaId }
     const updateData: any = {};
     if (bulkFares.short_route) updateData.short_route = bulkFares.short_route;
     if (bulkFares.long_route) updateData.long_route = bulkFares.long_route;
-    
+
     if (Object.keys(updateData).length === 0) {
       toast({ title: "Error", description: "Ingrese al menos una tarifa", variant: "destructive" });
       return;
@@ -191,112 +203,151 @@ const ParishRoutesManager: React.FC<ParishRoutesManagerProps> = ({ parroquiaId }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Gestión de Rutas</h1>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? <X className="mr-2" /> : <Plus className="mr-2" />}
-          {showForm ? 'Cancelar' : 'Nueva Ruta'}
-        </Button>
-      </div>
-
-      {/* Route Configuration Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock size={20} />
-            Configurar Ruta (Tarifas, Horarios y Frecuencia)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+      {/* Create Route Dialog */}
+      <Dialog open={createRouteDialogOpen} onOpenChange={setCreateRouteDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Crear Nueva Ruta</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label>Seleccionar Ruta</Label>
-              <Select value={selectedRouteId} onValueChange={(v) => {
-                setSelectedRouteId(v);
-                const route = routes.find(r => r.id === v);
-                if (route) setEditRouteData(route);
-              }}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar ruta para editar" /></SelectTrigger>
-                <SelectContent>
-                  {routes.map(r => (
-                    <SelectItem key={r.id} value={r.id}>
-                      <span className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: r.color }} />
-                        {r.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Nombre *</Label>
+              <Input value={newRoute.name} onChange={(e) => setNewRoute({ ...newRoute, name: e.target.value })} placeholder="Nombre de la ruta" />
             </div>
-            
-            {selectedRouteId && editRouteData && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-muted/30">
-                <div>
-                  <Label className="flex items-center gap-1"><DollarSign size={14} /> Tarifa Corta (Bs)</Label>
-                  <Input 
-                    value={editRouteData.short_route || ''} 
-                    onChange={(e) => setEditRouteData({...editRouteData, short_route: e.target.value})} 
-                    placeholder="Ej: 2.50" 
-                  />
-                </div>
-                <div>
-                  <Label className="flex items-center gap-1"><DollarSign size={14} /> Tarifa Larga (Bs)</Label>
-                  <Input 
-                    value={editRouteData.long_route || ''} 
-                    onChange={(e) => setEditRouteData({...editRouteData, long_route: e.target.value})} 
-                    placeholder="Ej: 4.00" 
-                  />
-                </div>
-                <div>
-                  <Label className="flex items-center gap-1"><Clock size={14} /> Frecuencia (min)</Label>
-                  <Input 
-                    type="number" 
-                    value={editRouteData.frequency_minutes || 15} 
-                    onChange={(e) => setEditRouteData({...editRouteData, frequency_minutes: parseInt(e.target.value) || 15})} 
-                    placeholder="15" 
-                  />
-                </div>
-                <div>
-                  <Label>Hora de Salida</Label>
-                  <Input 
-                    type="time" 
-                    value={editRouteData.departure_time || '05:30'} 
-                    onChange={(e) => setEditRouteData({...editRouteData, departure_time: e.target.value})} 
-                  />
-                </div>
-                <div>
-                  <Label>Hora de Llegada</Label>
-                  <Input 
-                    type="time" 
-                    value={editRouteData.arrival_time || '21:00'} 
-                    onChange={(e) => setEditRouteData({...editRouteData, arrival_time: e.target.value})} 
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button onClick={async () => {
-                    const { error } = await supabase.from('bus_routes').update({
-                      short_route: editRouteData.short_route,
-                      long_route: editRouteData.long_route,
-                      frequency_minutes: editRouteData.frequency_minutes,
-                      departure_time: editRouteData.departure_time,
-                      arrival_time: editRouteData.arrival_time
-                    }).eq('id', selectedRouteId);
-                    if (error) {
-                      toast({ title: "Error", description: error.message, variant: "destructive" });
-                    } else {
-                      toast({ title: "Éxito", description: "Configuración actualizada" });
-                      loadRoutes();
-                    }
-                  }} className="w-full">
-                    <Save size={16} className="mr-2" />Guardar Cambios
-                  </Button>
+            <div>
+              <Label>Identificación</Label>
+              <Input value={newRoute.route_identification} onChange={(e) => setNewRoute({ ...newRoute, route_identification: e.target.value })} placeholder="Ej: Ruta 4A" />
+            </div>
+            <div>
+              <Label>Color</Label>
+              <div className="flex gap-2">
+                <Input type="color" value={newRoute.color} onChange={(e) => setNewRoute({ ...newRoute, color: e.target.value })} className="w-16 h-10" />
+                <Input value={newRoute.color} onChange={(e) => setNewRoute({ ...newRoute, color: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <Label>Tarifa Corta (Bs)</Label>
+              <Input value={newRoute.short_route} onChange={(e) => setNewRoute({ ...newRoute, short_route: e.target.value })} placeholder="Ej: 2.50" />
+            </div>
+            <div>
+              <Label>Tarifa Larga (Bs)</Label>
+              <Input value={newRoute.long_route} onChange={(e) => setNewRoute({ ...newRoute, long_route: e.target.value })} placeholder="Ej: 4.00" />
+            </div>
+            <div>
+              <Label>Frecuencia (min)</Label>
+              <Input type="number" value={newRoute.frequency_minutes} onChange={(e) => setNewRoute({ ...newRoute, frequency_minutes: e.target.value })} placeholder="15" />
+            </div>
+            <div>
+              <Label>Hora de Salida</Label>
+              <Input type="time" value={newRoute.departure_time} onChange={(e) => setNewRoute({ ...newRoute, departure_time: e.target.value })} />
+            </div>
+            <div>
+              <Label>Hora de Llegada</Label>
+              <Input type="time" value={newRoute.arrival_time} onChange={(e) => setNewRoute({ ...newRoute, arrival_time: e.target.value })} />
+            </div>
+            <div className="md:col-span-3">
+              <Label>Descripción</Label>
+              <Input value={newRoute.description} onChange={(e) => setNewRoute({ ...newRoute, description: e.target.value })} placeholder="Descripción de la ruta" />
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => { setCreateRouteDialogOpen(false); resetNewRouteForm(); }}>Cancelar</Button>
+            <Button onClick={handleAddRoute} disabled={loading}><Plus size={16} className="mr-2" />Crear Ruta</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Route Dialog (includes tariffs, schedules, frequency) */}
+      <Dialog open={editRouteDialogOpen} onOpenChange={setEditRouteDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock size={20} />
+              Configurar Ruta (Tarifas, Horarios y Frecuencia)
+            </DialogTitle>
+          </DialogHeader>
+          {editingRoute && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Nombre</Label>
+                <Input value={editingRoute.name || ''} onChange={(e) => setEditingRoute({ ...editingRoute, name: e.target.value })} />
+              </div>
+              <div>
+                <Label>Identificación</Label>
+                <Input value={editingRoute.route_identification || ''} onChange={(e) => setEditingRoute({ ...editingRoute, route_identification: e.target.value })} />
+              </div>
+              <div>
+                <Label>Color</Label>
+                <div className="flex gap-2">
+                  <Input type="color" value={editingRoute.color || '#3B82F6'} onChange={(e) => setEditingRoute({ ...editingRoute, color: e.target.value })} className="w-16 h-10" />
+                  <Input value={editingRoute.color || ''} onChange={(e) => setEditingRoute({ ...editingRoute, color: e.target.value })} />
                 </div>
               </div>
-            )}
+              <div>
+                <Label className="flex items-center gap-1"><DollarSign size={14} /> Tarifa Corta (Bs)</Label>
+                <Input value={editingRoute.short_route || ''} onChange={(e) => setEditingRoute({ ...editingRoute, short_route: e.target.value })} placeholder="Ej: 2.50" />
+              </div>
+              <div>
+                <Label className="flex items-center gap-1"><DollarSign size={14} /> Tarifa Larga (Bs)</Label>
+                <Input value={editingRoute.long_route || ''} onChange={(e) => setEditingRoute({ ...editingRoute, long_route: e.target.value })} placeholder="Ej: 4.00" />
+              </div>
+              <div>
+                <Label className="flex items-center gap-1"><Clock size={14} /> Frecuencia (min)</Label>
+                <Input type="number" value={editingRoute.frequency_minutes || 15} onChange={(e) => setEditingRoute({ ...editingRoute, frequency_minutes: parseInt(e.target.value) || 15 })} placeholder="15" />
+              </div>
+              <div>
+                <Label>Hora de Salida</Label>
+                <Input type="time" value={editingRoute.departure_time || '05:30'} onChange={(e) => setEditingRoute({ ...editingRoute, departure_time: e.target.value })} />
+              </div>
+              <div>
+                <Label>Hora de Llegada</Label>
+                <Input type="time" value={editingRoute.arrival_time || '21:00'} onChange={(e) => setEditingRoute({ ...editingRoute, arrival_time: e.target.value })} />
+              </div>
+              <div className="md:col-span-3">
+                <Label>Descripción</Label>
+                <Input value={editingRoute.description || ''} onChange={(e) => setEditingRoute({ ...editingRoute, description: e.target.value })} />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setEditRouteDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveRoute} disabled={loading}><Save size={16} className="mr-2" />Guardar Cambios</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Fare Dialog */}
+      <Dialog open={bulkFareDialogOpen} onOpenChange={setBulkFareDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Tarifas de {selectedRouteIds.length} Rutas</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nueva Tarifa Corta (Bs)</Label>
+              <Input value={bulkFares.short_route} onChange={(e) => setBulkFares({ ...bulkFares, short_route: e.target.value })} placeholder="Ej: 2.50" />
+            </div>
+            <div>
+              <Label>Nueva Tarifa Larga (Bs)</Label>
+              <Input value={bulkFares.long_route} onChange={(e) => setBulkFares({ ...bulkFares, long_route: e.target.value })} placeholder="Ej: 4.00" />
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={handleBulkFareUpdate}>
+                <Save size={16} className="mr-2" />Guardar Cambios
+              </Button>
+              <Button variant="outline" onClick={() => setBulkFareDialogOpen(false)}>Cancelar</Button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Gestión de Rutas</h1>
+        <Button onClick={() => setCreateRouteDialogOpen(true)}>
+          <Plus className="mr-2" size={16} />Nueva Ruta
+        </Button>
+      </div>
 
       {/* Bulk Fare Editing */}
       <Card>
@@ -309,8 +360,8 @@ const ParishRoutesManager: React.FC<ParishRoutesManagerProps> = ({ parroquiaId }
         <CardContent>
           <div className="space-y-4">
             <div className="flex gap-2 flex-wrap">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => {
                   if (selectedRouteIds.length === routes.length) {
@@ -360,138 +411,10 @@ const ParishRoutesManager: React.FC<ParishRoutesManagerProps> = ({ parroquiaId }
         </CardContent>
       </Card>
 
-      {/* Bulk Fare Dialog */}
-      <Dialog open={bulkFareDialogOpen} onOpenChange={setBulkFareDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Tarifas de {selectedRouteIds.length} Rutas</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Nueva Tarifa Corta (Bs)</Label>
-              <Input 
-                value={bulkFares.short_route} 
-                onChange={(e) => setBulkFares({...bulkFares, short_route: e.target.value})}
-                placeholder="Ej: 2.50"
-              />
-            </div>
-            <div>
-              <Label>Nueva Tarifa Larga (Bs)</Label>
-              <Input 
-                value={bulkFares.long_route} 
-                onChange={(e) => setBulkFares({...bulkFares, long_route: e.target.value})}
-                placeholder="Ej: 4.00"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button className="flex-1" onClick={handleBulkFareUpdate}>
-                <Save size={16} className="mr-2" />Guardar Cambios
-              </Button>
-              <Button variant="outline" onClick={() => setBulkFareDialogOpen(false)}>Cancelar</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Crear Nueva Ruta</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label>Nombre *</Label>
-                <Input 
-                  value={newRoute.name} 
-                  onChange={(e) => setNewRoute({...newRoute, name: e.target.value})}
-                  placeholder="Nombre de la ruta"
-                />
-              </div>
-              <div>
-                <Label>Identificación</Label>
-                <Input 
-                  value={newRoute.route_identification} 
-                  onChange={(e) => setNewRoute({...newRoute, route_identification: e.target.value})}
-                  placeholder="Ej: Ruta 4A"
-                />
-              </div>
-              <div>
-                <Label>Color</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    type="color" 
-                    value={newRoute.color} 
-                    onChange={(e) => setNewRoute({...newRoute, color: e.target.value})}
-                    className="w-16 h-10"
-                  />
-                  <Input 
-                    value={newRoute.color} 
-                    onChange={(e) => setNewRoute({...newRoute, color: e.target.value})}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Tarifa Corta (Bs)</Label>
-                <Input 
-                  value={newRoute.short_route} 
-                  onChange={(e) => setNewRoute({...newRoute, short_route: e.target.value})}
-                  placeholder="Ej: 2.50"
-                />
-              </div>
-              <div>
-                <Label>Tarifa Larga (Bs)</Label>
-                <Input 
-                  value={newRoute.long_route} 
-                  onChange={(e) => setNewRoute({...newRoute, long_route: e.target.value})}
-                  placeholder="Ej: 4.00"
-                />
-              </div>
-              <div>
-                <Label>Frecuencia (min)</Label>
-                <Input 
-                  type="number"
-                  value={newRoute.frequency_minutes} 
-                  onChange={(e) => setNewRoute({...newRoute, frequency_minutes: e.target.value})}
-                  placeholder="15"
-                />
-              </div>
-              <div>
-                <Label>Hora de Salida</Label>
-                <Input 
-                  type="time"
-                  value={newRoute.departure_time} 
-                  onChange={(e) => setNewRoute({...newRoute, departure_time: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label>Hora de Llegada</Label>
-                <Input 
-                  type="time"
-                  value={newRoute.arrival_time} 
-                  onChange={(e) => setNewRoute({...newRoute, arrival_time: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label>Descripción</Label>
-                <Input 
-                  value={newRoute.description} 
-                  onChange={(e) => setNewRoute({...newRoute, description: e.target.value})}
-                  placeholder="Descripción de la ruta"
-                />
-              </div>
-            </div>
-            <Button onClick={handleAddRoute} disabled={loading} className="mt-4">
-              <Plus size={16} className="mr-2" />
-              Agregar Ruta
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
+      {/* Routes Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Rutas del Municipio ({routes.length})</CardTitle>
+          <CardTitle>Rutas Registradas ({routes.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -513,78 +436,20 @@ const ParishRoutesManager: React.FC<ParishRoutesManagerProps> = ({ parroquiaId }
               <TableBody>
                 {routes.map(route => (
                   <TableRow key={route.id}>
-                    <TableCell>
-                      {editingRoute === route.id ? (
-                        <Input 
-                          type="color" 
-                          value={editRouteData.color || '#3B82F6'} 
-                          onChange={(e) => setEditRouteData({...editRouteData, color: e.target.value})}
-                          className="w-12 h-8"
-                        />
-                      ) : (
-                        <div 
-                          className="w-6 h-6 rounded-full border" 
-                          style={{ backgroundColor: route.color }}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingRoute === route.id ? (
-                        <Input 
-                          value={editRouteData.name || ''} 
-                          onChange={(e) => setEditRouteData({...editRouteData, name: e.target.value})}
-                        />
-                      ) : (
-                        route.name
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingRoute === route.id ? (
-                        <Input 
-                          value={editRouteData.route_identification || ''} 
-                          onChange={(e) => setEditRouteData({...editRouteData, route_identification: e.target.value})}
-                        />
-                      ) : (
-                        route.route_identification || '-'
-                      )}
-                    </TableCell>
+                    <TableCell><div className="w-6 h-6 rounded-full" style={{ backgroundColor: route.color }} /></TableCell>
+                    <TableCell className="font-medium">{route.name}</TableCell>
+                    <TableCell>{route.route_identification || '-'}</TableCell>
                     <TableCell>{route.short_route || '-'}</TableCell>
                     <TableCell>{route.long_route || '-'}</TableCell>
                     <TableCell>{route.frequency_minutes || 15} min</TableCell>
-                    <TableCell className="text-xs">
-                      {route.departure_time?.slice(0,5) || '05:30'} - {route.arrival_time?.slice(0,5) || '21:00'}
-                    </TableCell>
+                    <TableCell className="text-xs">{route.departure_time?.slice(0, 5) || '05:30'} - {route.arrival_time?.slice(0, 5) || '21:00'}</TableCell>
                     <TableCell className="text-right space-x-2">
-                      {editingRoute === route.id ? (
-                        <>
-                          <Button size="sm" onClick={handleSaveRoute} disabled={loading}>
-                            <Save size={16} />
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => setEditingRoute(null)}>
-                            <X size={16} />
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => { 
-                              setEditingRoute(route.id); 
-                              setEditRouteData(route); 
-                            }}
-                          >
-                            <Edit size={16} />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive" 
-                            onClick={() => handleDeleteRoute(route.id)}
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                        </>
-                      )}
+                      <Button size="sm" variant="outline" onClick={() => openEditDialog(route)}>
+                        <Edit size={16} />
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => handleDeleteRoute(route.id)}>
+                        <Trash2 size={16} />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

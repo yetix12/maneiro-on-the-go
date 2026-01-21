@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Plus, Edit, Trash2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -18,9 +19,13 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
   const [stops, setStops] = useState<any[]>([]);
   const [routes, setRoutes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [editingStop, setEditingStop] = useState<string | null>(null);
-  const [editStopData, setEditStopData] = useState<any>({});
-  const [showForm, setShowForm] = useState(false);
+
+  // Dialogs
+  const [createStopDialogOpen, setCreateStopDialogOpen] = useState(false);
+  const [editStopDialogOpen, setEditStopDialogOpen] = useState(false);
+
+  // Edit state
+  const [editingStop, setEditingStop] = useState<any>(null);
 
   const [newStop, setNewStop] = useState({
     name: '',
@@ -121,13 +126,8 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
       if (error) throw error;
 
       toast({ title: "Éxito", description: "Parada creada correctamente" });
-      setNewStop({
-        name: '',
-        coordinates: '',
-        stop_order: '',
-        route_id: ''
-      });
-      setShowForm(false);
+      resetNewStopForm();
+      setCreateStopDialogOpen(false);
       loadStops();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -136,8 +136,31 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
     }
   };
 
+  const resetNewStopForm = () => {
+    setNewStop({
+      name: '',
+      coordinates: '',
+      stop_order: '',
+      route_id: ''
+    });
+  };
+
+  const openEditDialog = (stop: any) => {
+    setEditingStop({
+      ...stop,
+      coordinates: `${stop.latitude}, ${stop.longitude}`
+    });
+    setEditStopDialogOpen(true);
+  };
+
   const handleSaveStop = async () => {
     if (!editingStop) return;
+
+    const coords = parseCoordinates(editingStop.coordinates);
+    if (!coords) {
+      toast({ title: "Error", description: "Formato de coordenadas inválido", variant: "destructive" });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -145,17 +168,18 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
       const { error } = await supabase
         .from('bus_stops')
         .update({
-          name: editStopData.name,
-          latitude: parseFloat(editStopData.latitude),
-          longitude: parseFloat(editStopData.longitude),
-          stop_order: parseInt(editStopData.stop_order) || 0,
-          route_id: editStopData.route_id || null
+          name: editingStop.name,
+          latitude: coords.lat,
+          longitude: coords.lng,
+          stop_order: parseInt(editingStop.stop_order) || 0,
+          route_id: editingStop.route_id || null
         })
-        .eq('id', editingStop);
+        .eq('id', editingStop.id);
 
       if (error) throw error;
 
       toast({ title: "Éxito", description: "Parada actualizada" });
+      setEditStopDialogOpen(false);
       setEditingStop(null);
       loadStops();
     } catch (error: any) {
@@ -189,61 +213,111 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Gestión de Paradas</h1>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? <X className="mr-2" /> : <Plus className="mr-2" />}
-          {showForm ? 'Cancelar' : 'Nueva Parada'}
-        </Button>
-      </div>
+      {/* Create Stop Dialog */}
+      <Dialog open={createStopDialogOpen} onOpenChange={setCreateStopDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Crear Nueva Parada</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <Label>Nombre *</Label>
+              <Input
+                value={newStop.name}
+                onChange={(e) => setNewStop({ ...newStop, name: e.target.value })}
+                placeholder="Nombre de la parada"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Coordenadas * (lat, lng)</Label>
+              <Input
+                value={newStop.coordinates}
+                onChange={(e) => setNewStop({ ...newStop, coordinates: e.target.value })}
+                placeholder="10.963742, -63.842669"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Formato: latitud, longitud</p>
+            </div>
+            <div>
+              <Label>Orden</Label>
+              <Input
+                type="number"
+                value={newStop.stop_order}
+                onChange={(e) => setNewStop({ ...newStop, stop_order: e.target.value })}
+                placeholder="1"
+              />
+            </div>
+            <div>
+              <Label>Ruta</Label>
+              <Select value={newStop.route_id} onValueChange={(v) => setNewStop({ ...newStop, route_id: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar ruta" />
+                </SelectTrigger>
+                <SelectContent>
+                  {routes.map(route => (
+                    <SelectItem key={route.id} value={route.id}>
+                      <span className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: route.color }} />
+                        {route.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => { setCreateStopDialogOpen(false); resetNewStopForm(); }}>Cancelar</Button>
+            <Button onClick={handleAddStop} disabled={loading}><Plus size={16} className="mr-2" />Agregar Parada</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Crear Nueva Parada</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <Label>Nombre *</Label>
-                <Input 
-                  value={newStop.name} 
-                  onChange={(e) => setNewStop({...newStop, name: e.target.value})}
-                  placeholder="Nombre de la parada"
+      {/* Edit Stop Dialog */}
+      <Dialog open={editStopDialogOpen} onOpenChange={setEditStopDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Parada</DialogTitle>
+          </DialogHeader>
+          {editingStop && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <Label>Nombre</Label>
+                <Input
+                  value={editingStop.name || ''}
+                  onChange={(e) => setEditingStop({ ...editingStop, name: e.target.value })}
                 />
               </div>
-              <div>
-                <Label>Coordenadas * (lat, lng)</Label>
-                <Input 
-                  value={newStop.coordinates} 
-                  onChange={(e) => setNewStop({...newStop, coordinates: e.target.value})}
+              <div className="md:col-span-2">
+                <Label>Coordenadas (lat, lng)</Label>
+                <Input
+                  value={editingStop.coordinates || ''}
+                  onChange={(e) => setEditingStop({ ...editingStop, coordinates: e.target.value })}
                   placeholder="10.963742, -63.842669"
                 />
                 <p className="text-xs text-muted-foreground mt-1">Formato: latitud, longitud</p>
               </div>
               <div>
                 <Label>Orden</Label>
-                <Input 
+                <Input
                   type="number"
-                  value={newStop.stop_order} 
-                  onChange={(e) => setNewStop({...newStop, stop_order: e.target.value})}
-                  placeholder="1"
+                  value={editingStop.stop_order || ''}
+                  onChange={(e) => setEditingStop({ ...editingStop, stop_order: e.target.value })}
                 />
               </div>
               <div>
                 <Label>Ruta</Label>
-                <Select value={newStop.route_id} onValueChange={(v) => setNewStop({...newStop, route_id: v})}>
+                <Select
+                  value={editingStop.route_id || ''}
+                  onValueChange={(v) => setEditingStop({ ...editingStop, route_id: v })}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar ruta" />
+                    <SelectValue placeholder="Seleccionar" />
                   </SelectTrigger>
                   <SelectContent>
                     {routes.map(route => (
                       <SelectItem key={route.id} value={route.id}>
                         <span className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: route.color }}
-                          />
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: route.color }} />
                           {route.name}
                         </span>
                       </SelectItem>
@@ -252,14 +326,23 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
                 </Select>
               </div>
             </div>
-            <Button onClick={handleAddStop} disabled={loading} className="mt-4">
-              <Plus size={16} className="mr-2" />
-              Agregar Parada
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+          )}
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setEditStopDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveStop} disabled={loading}><Save size={16} className="mr-2" />Guardar Cambios</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Gestión de Paradas</h1>
+        <Button onClick={() => setCreateStopDialogOpen(true)}>
+          <Plus className="mr-2" size={16} />Nueva Parada
+        </Button>
+      </div>
+
+      {/* Stops Table */}
       <Card>
         <CardHeader>
           <CardTitle>Paradas del Municipio ({stops.length})</CardTitle>
@@ -282,112 +365,25 @@ const ParishStopsManager: React.FC<ParishStopsManagerProps> = ({ parroquiaId }) 
               <TableBody>
                 {stops.map(stop => (
                   <TableRow key={stop.id}>
+                    <TableCell className="font-medium">{stop.name}</TableCell>
+                    <TableCell>{stop.latitude}</TableCell>
+                    <TableCell>{stop.longitude}</TableCell>
+                    <TableCell>{stop.stop_order || '-'}</TableCell>
                     <TableCell>
-                      {editingStop === stop.id ? (
-                        <Input 
-                          value={editStopData.name || ''} 
-                          onChange={(e) => setEditStopData({...editStopData, name: e.target.value})}
-                        />
-                      ) : (
-                        stop.name
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingStop === stop.id ? (
-                        <Input 
-                          type="number"
-                          step="0.000001"
-                          value={editStopData.latitude || ''} 
-                          onChange={(e) => setEditStopData({...editStopData, latitude: e.target.value})}
-                        />
-                      ) : (
-                        stop.latitude
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingStop === stop.id ? (
-                        <Input 
-                          type="number"
-                          step="0.000001"
-                          value={editStopData.longitude || ''} 
-                          onChange={(e) => setEditStopData({...editStopData, longitude: e.target.value})}
-                        />
-                      ) : (
-                        stop.longitude
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingStop === stop.id ? (
-                        <Input 
-                          type="number"
-                          value={editStopData.stop_order || ''} 
-                          onChange={(e) => setEditStopData({...editStopData, stop_order: e.target.value})}
-                          className="w-16"
-                        />
-                      ) : (
-                        stop.stop_order || '-'
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingStop === stop.id ? (
-                        <Select 
-                          value={editStopData.route_id || ''} 
-                          onValueChange={(v) => setEditStopData({...editStopData, route_id: v})}
-                        >
-                          <SelectTrigger className="w-40">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {routes.map(route => (
-                              <SelectItem key={route.id} value={route.id}>
-                                {route.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        stop.bus_routes && (
-                          <span className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full" 
-                              style={{ backgroundColor: stop.bus_routes.color }}
-                            />
-                            {stop.bus_routes.name}
-                          </span>
-                        )
+                      {stop.bus_routes && (
+                        <span className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stop.bus_routes.color }} />
+                          {stop.bus_routes.name}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                      {editingStop === stop.id ? (
-                        <>
-                          <Button size="sm" onClick={handleSaveStop} disabled={loading}>
-                            <Save size={16} />
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => setEditingStop(null)}>
-                            <X size={16} />
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => { 
-                              setEditingStop(stop.id); 
-                              setEditStopData(stop); 
-                            }}
-                          >
-                            <Edit size={16} />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive" 
-                            onClick={() => handleDeleteStop(stop.id)}
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                        </>
-                      )}
+                      <Button size="sm" variant="outline" onClick={() => openEditDialog(stop)}>
+                        <Edit size={16} />
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => handleDeleteStop(stop.id)}>
+                        <Trash2 size={16} />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
