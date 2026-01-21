@@ -150,6 +150,62 @@ export type Database = {
           },
         ]
       }
+      driver_payments: {
+        Row: {
+          created_at: string
+          driver_id: string
+          id: string
+          payment_method: string
+          pm_banco: string | null
+          pm_cedula: string | null
+          pm_telefono: string | null
+          tf_banco: string | null
+          tf_cedula: string | null
+          tf_numero_cuenta: string | null
+          tf_tipo_cuenta: string | null
+          tf_titular: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          id?: string
+          payment_method: string
+          pm_banco?: string | null
+          pm_cedula?: string | null
+          pm_telefono?: string | null
+          tf_banco?: string | null
+          tf_cedula?: string | null
+          tf_numero_cuenta?: string | null
+          tf_tipo_cuenta?: string | null
+          tf_titular?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          id?: string
+          payment_method?: string
+          pm_banco?: string | null
+          pm_cedula?: string | null
+          pm_telefono?: string | null
+          tf_banco?: string | null
+          tf_cedula?: string | null
+          tf_numero_cuenta?: string | null
+          tf_tipo_cuenta?: string | null
+          tf_titular?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_payments_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       galeria_maneiro: {
         Row: {
           bus_stop_ids: string[] | null
