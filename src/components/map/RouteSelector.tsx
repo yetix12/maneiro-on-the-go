@@ -55,6 +55,8 @@ const RouteSelector: React.FC<RouteSelectorProps> = ({ selectedRoute, onRouteSel
         </Button>
         {loading ? (
           <div className="text-sm text-muted-foreground">Cargando rutas...</div>
+        ) : routes.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No hay rutas registradas</div>
         ) : (
           routes.map((route) => (
             <Button
