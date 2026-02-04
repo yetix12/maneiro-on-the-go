@@ -6,7 +6,8 @@ import {
   Map, 
   MapPin, 
   BarChart3,
-  LogOut
+  LogOut,
+  Car
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +21,7 @@ interface ParishAdminSidebarProps {
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'users', label: 'Usuarios', icon: Users },
+  { id: 'vehicles', label: 'Vehículos', icon: Car },
   { id: 'routes', label: 'Rutas', icon: Map },
   { id: 'stops', label: 'Paradas', icon: MapPin },
   { id: 'statistics', label: 'Estadísticas', icon: BarChart3 },
