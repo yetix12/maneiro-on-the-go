@@ -1,6 +1,7 @@
 
 import { useEffect, useRef, useState } from 'react';
-import { busRoutes, activeVehicles, maneiroArea, getAdminPointsOfInterest } from './mapData';
+import { useMapData, maneiroArea, RouteData, VehicleData } from '@/hooks/useMapData';
+import { getAdminPointsOfInterest } from './mapData';
 
 interface LocationData {
   latitude: number;
@@ -22,6 +23,8 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
   const [polylines, setPolylines] = useState<google.maps.Polyline[]>([]);
   const [polygons, setPolygons] = useState<google.maps.Polygon[]>([]);
+
+  const { routes, vehicles, loading } = useMapData();
 
   const clearMapElements = () => {
     markers.forEach(marker => marker.setMap(null));
@@ -61,17 +64,16 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
 
     setMap(mapInstance);
     setIsMapInitialized(true);
-    updateMapContent(mapInstance);
   };
 
-  const updateMapContent = (mapInstance: google.maps.Map) => {
+  const updateMapContent = (mapInstance: google.maps.Map, routesData: RouteData[], vehiclesData: VehicleData[]) => {
     clearMapElements();
     const newMarkers: google.maps.Marker[] = [];
     const newPolylines: google.maps.Polyline[] = [];
     const newPolygons: google.maps.Polygon[] = [];
 
     if (showMap) {
-      // Agregar polígono para destacar la zona de Maneiro
+      // Add Maneiro polygon
       const maneiroPolygon = new google.maps.Polygon({
         paths: maneiroArea,
         strokeColor: '#F44336',
@@ -83,7 +85,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
       maneiroPolygon.setMap(mapInstance);
       newPolygons.push(maneiroPolygon);
 
-      // Agregar marcador para Maneiro
+      // Add Maneiro marker
       const maneiroMarker = new google.maps.Marker({
         position: { lat: 11.0050, lng: -63.8650 },
         map: mapInstance,
@@ -100,11 +102,12 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
       });
       newMarkers.push(maneiroMarker);
 
-      // Agregar rutas solo si no hay ruta específica seleccionada o coincide
-      busRoutes.forEach((route) => {
+      // Add routes from database
+      routesData.forEach((route) => {
         const shouldShowRoute = selectedRoute === null || selectedRoute === route.id;
         
-        if (shouldShowRoute) {
+        if (shouldShowRoute && route.stops.length > 0) {
+          // Add stop markers
           route.stops.forEach((stop) => {
             const marker = new google.maps.Marker({
               position: { lat: stop.lat, lng: stop.lng },
@@ -127,6 +130,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
                 <div style="padding: 8px;">
                   <h3 style="margin: 0; color: ${route.color};">${stop.name}</h3>
                   <p style="margin: 4px 0 0 0; font-size: 12px;">Ruta: ${route.name}</p>
+                  ${route.route_identification ? `<p style="margin: 2px 0 0 0; font-size: 11px; color: #666;">${route.route_identification}</p>` : ''}
                 </div>
               `,
             });
@@ -136,29 +140,32 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
             });
           });
 
-          // Agregar líneas de ruta
-          const routePath = new google.maps.Polyline({
-            path: route.stops.map(stop => ({ lat: stop.lat, lng: stop.lng })),
-            geodesic: true,
-            strokeColor: route.color,
-            strokeOpacity: selectedRoute === null || selectedRoute === route.id ? 0.8 : 0.3,
-            strokeWeight: selectedRoute === route.id ? 4 : 2,
-          });
-          routePath.setMap(mapInstance);
-          newPolylines.push(routePath);
+          // Add route polyline
+          if (route.stops.length > 1) {
+            const routePath = new google.maps.Polyline({
+              path: route.stops.map(stop => ({ lat: stop.lat, lng: stop.lng })),
+              geodesic: true,
+              strokeColor: route.color,
+              strokeOpacity: selectedRoute === null || selectedRoute === route.id ? 0.8 : 0.3,
+              strokeWeight: selectedRoute === route.id ? 4 : 2,
+            });
+            routePath.setMap(mapInstance);
+            newPolylines.push(routePath);
+          }
         }
       });
 
-      // Agregar vehículos activos
-      activeVehicles.forEach((vehicle) => {
-        const route = busRoutes.find(r => r.id === vehicle.routeId);
+      // Add active vehicles from database
+      vehiclesData.forEach((vehicle) => {
+        const route = routesData.find(r => r.id === vehicle.routeId);
         const shouldShowVehicle = selectedRoute === null || selectedRoute === vehicle.routeId;
         
-        if (shouldShowVehicle) {
+        // Only show vehicles with coordinates
+        if (shouldShowVehicle && vehicle.lat && vehicle.lng) {
           const marker = new google.maps.Marker({
             position: { lat: vehicle.lat, lng: vehicle.lng },
             map: mapInstance,
-            title: `Vehículo ${vehicle.id}`,
+            title: `Vehículo ${vehicle.license_plate}`,
             icon: {
               url: 'data:image/svg+xml;base64,' + btoa(`
                 <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
@@ -175,10 +182,11 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
           const infoWindow = new google.maps.InfoWindow({
             content: `
               <div style="padding: 8px;">
-                <h3 style="margin: 0; color: ${route?.color || '#3B82F6'};">Vehículo ${vehicle.id}</h3>
-                <p style="margin: 4px 0; font-size: 12px;"><strong>Conductor:</strong> ${vehicle.driver}</p>
+                <h3 style="margin: 0; color: ${route?.color || '#3B82F6'};">${vehicle.license_plate}</h3>
+                <p style="margin: 4px 0; font-size: 12px;"><strong>Modelo:</strong> ${vehicle.model || 'N/A'}</p>
+                <p style="margin: 4px 0; font-size: 12px;"><strong>Conductor:</strong> ${vehicle.driver || 'Sin asignar'}</p>
                 <p style="margin: 4px 0; font-size: 12px;"><strong>Estado:</strong> ${vehicle.status}</p>
-                <p style="margin: 4px 0; font-size: 12px;"><strong>Ruta:</strong> ${route?.name}</p>
+                <p style="margin: 4px 0; font-size: 12px;"><strong>Ruta:</strong> ${route?.name || 'Sin ruta'}</p>
               </div>
             `,
           });
@@ -191,7 +199,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
       });
     }
 
-    // Agregar puntos de interés del admin (siempre visibles)
+    // Add admin points of interest
     const adminPoints = getAdminPointsOfInterest();
     adminPoints.forEach((point: any) => {
       const marker = new google.maps.Marker({
@@ -225,7 +233,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
       });
     });
 
-    // Agregar ubicación del usuario si está disponible
+    // Add user location marker
     if (userLocation) {
       const userMarker = new google.maps.Marker({
         position: { lat: userLocation.latitude, lng: userLocation.longitude },
@@ -244,7 +252,6 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
       });
       newMarkers.push(userMarker);
 
-      // Centrar mapa en la ubicación del usuario
       mapInstance.panTo({ lat: userLocation.latitude, lng: userLocation.longitude });
     }
 
@@ -260,10 +267,10 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
   }, [mapRef.current, isMapInitialized]);
 
   useEffect(() => {
-    if (map && isMapInitialized) {
-      updateMapContent(map);
+    if (map && isMapInitialized && !loading) {
+      updateMapContent(map, routes, vehicles);
     }
-  }, [showMap, selectedRoute, userLocation, map, isMapInitialized]);
+  }, [showMap, selectedRoute, userLocation, map, isMapInitialized, routes, vehicles, loading]);
 
-  return { mapRef, map, initializeMap };
+  return { mapRef, map, initializeMap, routes, loading };
 };
