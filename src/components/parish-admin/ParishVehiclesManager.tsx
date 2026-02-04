@@ -299,10 +299,10 @@ const ParishVehiclesManager: React.FC<ParishVehiclesManagerProps> = ({ parroquia
               </div>
               <div>
                 <Label>Ruta</Label>
-                <Select value={newVehicle.route_id} onValueChange={(v) => setNewVehicle({...newVehicle, route_id: v})}>
+                <Select value={newVehicle.route_id || "__none__"} onValueChange={(v) => setNewVehicle({...newVehicle, route_id: v === "__none__" ? "" : v})}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin ruta</SelectItem>
+                    <SelectItem value="__none__">Sin ruta</SelectItem>
                     {routes.map(r => (
                       <SelectItem key={r.id} value={r.id}>
                         <span className="flex items-center gap-2">
@@ -316,10 +316,10 @@ const ParishVehiclesManager: React.FC<ParishVehiclesManagerProps> = ({ parroquia
               </div>
               <div>
                 <Label>Conductor</Label>
-                <Select value={newVehicle.driver_id} onValueChange={(v) => setNewVehicle({...newVehicle, driver_id: v})}>
+                <Select value={newVehicle.driver_id || "__none__"} onValueChange={(v) => setNewVehicle({...newVehicle, driver_id: v === "__none__" ? "" : v})}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin asignar</SelectItem>
+                    <SelectItem value="__none__">Sin asignar</SelectItem>
                     {drivers.map(d => (
                       <SelectItem key={d.id} value={d.id}>{d.full_name || d.username || 'Sin nombre'}</SelectItem>
                     ))}
@@ -384,10 +384,10 @@ const ParishVehiclesManager: React.FC<ParishVehiclesManagerProps> = ({ parroquia
               </div>
               <div>
                 <Label>Ruta</Label>
-                <Select value={editVehicleData.route_id || ''} onValueChange={(v) => setEditVehicleData({...editVehicleData, route_id: v})}>
+                <Select value={editVehicleData.route_id || "__none__"} onValueChange={(v) => setEditVehicleData({...editVehicleData, route_id: v === "__none__" ? "" : v})}>
                   <SelectTrigger><SelectValue placeholder="Sin ruta" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin ruta</SelectItem>
+                    <SelectItem value="__none__">Sin ruta</SelectItem>
                     {routes.map(r => (
                       <SelectItem key={r.id} value={r.id}>
                         <span className="flex items-center gap-2">
@@ -401,10 +401,10 @@ const ParishVehiclesManager: React.FC<ParishVehiclesManagerProps> = ({ parroquia
               </div>
               <div>
                 <Label>Conductor</Label>
-                <Select value={editVehicleData.driver_id || ''} onValueChange={(v) => setEditVehicleData({...editVehicleData, driver_id: v})}>
+                <Select value={editVehicleData.driver_id || "__none__"} onValueChange={(v) => setEditVehicleData({...editVehicleData, driver_id: v === "__none__" ? "" : v})}>
                   <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin asignar</SelectItem>
+                    <SelectItem value="__none__">Sin asignar</SelectItem>
                     {drivers.map(d => (
                       <SelectItem key={d.id} value={d.id}>{d.full_name || d.username || 'Sin nombre'}</SelectItem>
                     ))}
