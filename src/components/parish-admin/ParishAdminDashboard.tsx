@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import ParishAdminSidebar from './ParishAdminSidebar';
 import ParishDashboardOverview from './ParishDashboardOverview';
 import ParishUsersManager from './ParishUsersManager';
+import ParishVehiclesManager from './ParishVehiclesManager';
 import ParishRoutesManager from './ParishRoutesManager';
 import ParishStopsManager from './ParishStopsManager';
 import ParishStatistics from './ParishStatistics';
@@ -43,6 +44,8 @@ const ParishAdminDashboard: React.FC<ParishAdminDashboardProps> = ({ onLogout, p
         return <ParishDashboardOverview parroquiaId={parroquiaId} parroquiaName={parroquiaName} />;
       case 'users':
         return <ParishUsersManager parroquiaId={parroquiaId} />;
+      case 'vehicles':
+        return <ParishVehiclesManager parroquiaId={parroquiaId} />;
       case 'routes':
         return <ParishRoutesManager parroquiaId={parroquiaId} />;
       case 'stops':
