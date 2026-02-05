@@ -13,7 +13,11 @@ interface RouteWithStops extends Route {
   stops: Stop[];
 }
 
-const RouteList = () => {
+interface RouteListProps {
+  onStopClick?: (routeId: string, stopId: string) => void;
+}
+
+const RouteList: React.FC<RouteListProps> = ({ onStopClick }) => {
   const [routes, setRoutes] = useState<RouteWithStops[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,7 +189,13 @@ const RouteList = () => {
               <h4 className="font-semibold mb-2 text-sm">Paradas ({route.stops.length}):</h4>
               <div className="flex flex-wrap gap-2">
                 {route.stops.map((stop) => (
-                  <Badge key={stop.id} variant="outline" className="text-xs">
+                  <Badge 
+                    key={stop.id} 
+                    variant="outline" 
+                    className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                    onClick={() => onStopClick?.(route.id, stop.id)}
+                  >
+                    <MapPin size={10} className="mr-1" />
                     {stop.name}
                   </Badge>
                 ))}
