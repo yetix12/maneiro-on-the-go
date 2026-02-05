@@ -73,35 +73,6 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
     const newPolygons: google.maps.Polygon[] = [];
 
     if (showMap) {
-      // Add Maneiro polygon
-      const maneiroPolygon = new google.maps.Polygon({
-        paths: maneiroArea,
-        strokeColor: '#F44336',
-        strokeOpacity: 0.8,
-        strokeWeight: 3,
-        fillColor: '#F44336',
-        fillOpacity: 0.2,
-      });
-      maneiroPolygon.setMap(mapInstance);
-      newPolygons.push(maneiroPolygon);
-
-      // Add Maneiro marker
-      const maneiroMarker = new google.maps.Marker({
-        position: { lat: 11.0050, lng: -63.8650 },
-        map: mapInstance,
-        title: 'Maneiro',
-        icon: {
-          url: 'data:image/svg+xml;base64,' + btoa(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
-              <circle cx="15" cy="15" r="12" fill="#F44336" stroke="white" stroke-width="2"/>
-              <text x="15" y="19" text-anchor="middle" fill="white" font-size="8" font-weight="bold">M</text>
-            </svg>
-          `),
-          scaledSize: new google.maps.Size(30, 30),
-        },
-      });
-      newMarkers.push(maneiroMarker);
-
       // Add routes from database
       routesData.forEach((route) => {
         const shouldShowRoute = selectedRoute === null || selectedRoute === route.id;
@@ -241,14 +212,15 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
         title: 'Tu ubicación',
         icon: {
           url: 'data:image/svg+xml;base64,' + btoa(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="8" fill="#00E676" stroke="white" stroke-width="2"/>
-              <circle cx="12" cy="12" r="3" fill="white"/>
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+              <circle cx="20" cy="20" r="18" fill="#4285F4" fill-opacity="0.2" stroke="#4285F4" stroke-width="2"/>
+              <circle cx="20" cy="14" r="6" fill="#4285F4"/>
+              <path d="M8 32 C8 24 12 20 20 20 C28 20 32 24 32 32" fill="#4285F4"/>
             </svg>
           `),
-          scaledSize: new google.maps.Size(24, 24),
+          scaledSize: new google.maps.Size(40, 40),
+          anchor: new google.maps.Point(20, 20),
         },
-        animation: google.maps.Animation.BOUNCE,
       });
       newMarkers.push(userMarker);
 
