@@ -1,12 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Navigation, MapPin, Bus, Route, Clock, LogOut, Info } from 'lucide-react';
 import GoogleMapComponent from '@/components/GoogleMapComponent';
 import RouteList from '@/components/RouteList';
 import VehicleTracker from '@/components/VehicleTracker';
-import ImageGallery from '@/components/ImageGallery';
+import RouteInfoSection from '@/components/RouteInfoSection';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
 interface IndexProps {
@@ -15,7 +14,21 @@ interface IndexProps {
 
 const Index: React.FC<IndexProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('map');
+  const [selectedRouteId, setSelectedRouteId] = useState<string | undefined>();
+  const [selectedStopId, setSelectedStopId] = useState<string | undefined>();
   const { location, error, isLoading } = useGeolocation();
+
+  const handleStopClick = (routeId: string, stopId: string) => {
+    setSelectedRouteId(routeId);
+    setSelectedStopId(stopId);
+    setActiveTab('info');
+  };
+
+  const handleInfoBack = () => {
+    setSelectedRouteId(undefined);
+    setSelectedStopId(undefined);
+    setActiveTab('routes');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-yellow-50">
@@ -53,9 +66,15 @@ const Index: React.FC<IndexProps> = ({ onLogout }) => {
             <GoogleMapComponent userLocation={location} />
           </div>
         )}
-        {activeTab === 'routes' && <RouteList />}
+        {activeTab === 'routes' && <RouteList onStopClick={handleStopClick} />}
         {activeTab === 'tracker' && <VehicleTracker />}
-        {activeTab === 'info' && <ImageGallery />}
+        {activeTab === 'info' && (
+          <RouteInfoSection 
+            initialRouteId={selectedRouteId}
+            initialStopId={selectedStopId}
+            onBack={handleInfoBack}
+          />
+        )}
       </div>
 
       {/* Navigation Tabs */}
