@@ -126,34 +126,76 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
         }
       });
 
-      // Add active vehicles from database
+    // Add active vehicles from database
       vehiclesData.forEach((vehicle) => {
         const route = routesData.find(r => r.id === vehicle.routeId);
         const shouldShowVehicle = selectedRoute === null || selectedRoute === vehicle.routeId;
         
-        // Only show vehicles with coordinates
+        // Only show vehicles with coordinates (driver is online)
         if (shouldShowVehicle && vehicle.lat && vehicle.lng) {
+          const routeColor = route?.color || '#3B82F6';
+          
+          // Calculate heading/direction based on route stops
+          let rotation = 0;
+          if (route && route.stops.length > 1) {
+            // Find nearest stop and calculate direction to next stop
+            let minDist = Infinity;
+            let nearestIdx = 0;
+            route.stops.forEach((stop, idx) => {
+              const dist = Math.sqrt(
+                Math.pow(stop.lat - vehicle.lat!, 2) + Math.pow(stop.lng - vehicle.lng!, 2)
+              );
+              if (dist < minDist) {
+                minDist = dist;
+                nearestIdx = idx;
+              }
+            });
+            
+            const nextIdx = Math.min(nearestIdx + 1, route.stops.length - 1);
+            if (nextIdx !== nearestIdx) {
+              const dx = route.stops[nextIdx].lng - vehicle.lng!;
+              const dy = route.stops[nextIdx].lat - vehicle.lat!;
+              rotation = Math.atan2(dx, dy) * (180 / Math.PI);
+            }
+          }
+          
+          // Create bus icon SVG with direction arrow, route color, and black border
+          const busSvg = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="44" height="56" viewBox="0 0 44 56">
+              <!-- Direction arrow -->
+              <polygon points="22,0 30,14 14,14" fill="${routeColor}" stroke="#000" stroke-width="1.5"/>
+              <!-- Trail indicator (where it came from) -->
+              <line x1="22" y1="52" x2="22" y2="44" stroke="${routeColor}" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+              <circle cx="22" cy="54" r="2" fill="${routeColor}" opacity="0.3"/>
+              <!-- Bus body -->
+              <rect x="10" y="14" width="24" height="30" rx="5" ry="5" fill="${routeColor}" stroke="#000" stroke-width="2"/>
+              <!-- Windshield -->
+              <rect x="14" y="18" width="16" height="8" rx="2" ry="2" fill="white" opacity="0.9"/>
+              <!-- Windows -->
+              <rect x="14" y="30" width="6" height="5" rx="1" fill="white" opacity="0.7"/>
+              <rect x="24" y="30" width="6" height="5" rx="1" fill="white" opacity="0.7"/>
+              <!-- Wheels -->
+              <circle cx="14" cy="42" r="2.5" fill="#333" stroke="#000" stroke-width="1"/>
+              <circle cx="30" cy="42" r="2.5" fill="#333" stroke="#000" stroke-width="1"/>
+            </svg>
+          `;
+
           const marker = new google.maps.Marker({
             position: { lat: vehicle.lat, lng: vehicle.lng },
             map: mapInstance,
             title: `Vehículo ${vehicle.license_plate}`,
             icon: {
-              url: 'data:image/svg+xml;base64,' + btoa(`
-                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
-                  <circle cx="15" cy="15" r="12" fill="${route?.color || '#3B82F6'}" stroke="white" stroke-width="2"/>
-                  <text x="15" y="19" text-anchor="middle" fill="white" font-size="10" font-weight="bold">BUS</text>
-                </svg>
-              `),
-              scaledSize: new google.maps.Size(30, 30),
+              url: 'data:image/svg+xml;base64,' + btoa(busSvg),
+              scaledSize: new google.maps.Size(44, 56),
+              anchor: new google.maps.Point(22, 28),
             },
-            animation: google.maps.Animation.BOUNCE,
           });
           newMarkers.push(marker);
 
           const infoWindow = new google.maps.InfoWindow({
             content: `
               <div style="padding: 8px;">
-                <h3 style="margin: 0; color: ${route?.color || '#3B82F6'};">${vehicle.license_plate}</h3>
+                <h3 style="margin: 0; color: ${routeColor};">${vehicle.license_plate}</h3>
                 <p style="margin: 4px 0; font-size: 12px;"><strong>Modelo:</strong> ${vehicle.model || 'N/A'}</p>
                 <p style="margin: 4px 0; font-size: 12px;"><strong>Conductor:</strong> ${vehicle.driver || 'Sin asignar'}</p>
                 <p style="margin: 4px 0; font-size: 12px;"><strong>Estado:</strong> ${vehicle.status}</p>
