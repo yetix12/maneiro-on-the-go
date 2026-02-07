@@ -78,7 +78,7 @@ const Index: React.FC<IndexProps> = ({ onLogout }) => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-blue-200 shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-blue-200 shadow-lg z-50">
         <div className="flex justify-around py-2">
           <Button
             variant={activeTab === 'map' ? 'default' : 'ghost'}
