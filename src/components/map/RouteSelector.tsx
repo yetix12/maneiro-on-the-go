@@ -68,7 +68,7 @@ const RouteSelector: React.FC<RouteSelectorProps> = ({ selectedRoute, onRouteSel
   };
 
   return (
-    <div className="absolute bottom-24 left-4 right-4 z-40">
+    <div className="absolute bottom-24 left-4 right-4">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button

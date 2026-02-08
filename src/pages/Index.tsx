@@ -119,7 +119,7 @@ const Index: React.FC<IndexProps> = ({ onLogout, userId }) => {
       {/* Main Content */}
       <div className="flex-1">
         {activeTab === 'map' && (
-          <div className="h-screen">
+          <div className="h-[calc(100vh-64px-56px)]">
             <GoogleMapComponent userLocation={location} />
           </div>
         )}

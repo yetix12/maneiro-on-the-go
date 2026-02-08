@@ -10,7 +10,7 @@ interface MapControlsProps {
 
 const MapControls: React.FC<MapControlsProps> = ({ followUser, onToggleFollow }) => {
   return (
-    <div className="absolute top-4 right-4 space-y-2 z-30">
+    <div className="absolute top-4 right-4 space-y-2">
       <Button 
         size="sm" 
         className={`shadow-lg ${
@@ -18,7 +18,10 @@ const MapControls: React.FC<MapControlsProps> = ({ followUser, onToggleFollow })
             ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
             : 'bg-card text-foreground hover:bg-secondary'
         }`}
-        onClick={onToggleFollow}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleFollow();
+        }}
         title={followUser ? 'Seguimiento GPS activo - toca para desactivar' : 'Seguimiento GPS inactivo - toca para activar'}
       >
         {followUser ? <Locate size={16} /> : <LocateOff size={16} />}
