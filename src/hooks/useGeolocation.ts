@@ -1,6 +1,5 @@
 
-import { useState, useEffect } from 'react';
-import { Geolocation } from '@capacitor/geolocation';
+import { useState, useEffect, useCallback } from 'react';
 
 interface LocationData {
   latitude: number;
@@ -12,46 +11,80 @@ export const useGeolocation = () => {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [permissionGranted, setPermissionGranted] = useState(false);
 
-  useEffect(() => {
-    getCurrentPosition();
-    // Actualizar posición cada 30 segundos
-    const interval = setInterval(getCurrentPosition, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const getCurrentPosition = async () => {
+  const getCurrentPosition = useCallback(async () => {
     try {
       setIsLoading(true);
-      const permissions = await Geolocation.requestPermissions();
-      
-      if (permissions.location === 'granted') {
-        const position = await Geolocation.getCurrentPosition({
-          enableHighAccuracy: true,
-          timeout: 10000,
-        });
-        
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-        });
-        setError(null);
-      } else {
-        setError('Permisos de ubicación denegados');
+
+      // Use the browser's native Geolocation API for better accuracy
+      if (!navigator.geolocation) {
+        setError('Geolocalización no soportada en este navegador');
+        return;
       }
-    } catch (err) {
-      console.error('Error getting location:', err);
-      setError('Error al obtener la ubicación');
-      // Fallback para web development - ubicación aproximada de Maneiro
-      setLocation({
-        latitude: 11.0047,
-        longitude: -63.8697,
+
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        });
       });
+
+      setLocation({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+      });
+      setError(null);
+      setPermissionGranted(true);
+    } catch (err: any) {
+      console.error('Error getting location:', err);
+      if (err.code === 1) {
+        setError('Permisos de ubicación denegados');
+        setPermissionGranted(false);
+      } else if (err.code === 2) {
+        setError('Ubicación no disponible');
+      } else if (err.code === 3) {
+        setError('Tiempo de espera agotado');
+      } else {
+        setError('Error al obtener la ubicación');
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  return { location, error, isLoading, getCurrentPosition };
+  const requestPermission = useCallback(async (): Promise<boolean> => {
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        });
+      });
+      
+      setLocation({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+      });
+      setPermissionGranted(true);
+      setError(null);
+      return true;
+    } catch {
+      setPermissionGranted(false);
+      setError('Permisos de ubicación denegados');
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    getCurrentPosition();
+    const interval = setInterval(getCurrentPosition, 30000);
+    return () => clearInterval(interval);
+  }, [getCurrentPosition]);
+
+  return { location, error, isLoading, getCurrentPosition, requestPermission, permissionGranted };
 };

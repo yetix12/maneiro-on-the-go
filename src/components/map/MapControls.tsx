@@ -1,28 +1,30 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Navigation, Map, Eye, EyeOff } from 'lucide-react';
+import { Navigation, Locate, LocateOff } from 'lucide-react';
 
 interface MapControlsProps {
-  showMap: boolean;
-  onToggleMap: () => void;
+  followUser: boolean;
+  onToggleFollow: () => void;
 }
 
-const MapControls: React.FC<MapControlsProps> = ({ showMap, onToggleMap }) => {
+const MapControls: React.FC<MapControlsProps> = ({ followUser, onToggleFollow }) => {
   return (
-    <div className="absolute top-4 right-4 space-y-2">
+    <div className="absolute top-4 right-4 space-y-2 z-30">
       <Button 
         size="sm" 
-        className="bg-white text-blue-600 hover:bg-blue-50 shadow-lg"
-        onClick={onToggleMap}
+        className={`shadow-lg ${
+          followUser 
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+            : 'bg-card text-foreground hover:bg-secondary'
+        }`}
+        onClick={onToggleFollow}
+        title={followUser ? 'Seguimiento GPS activo - toca para desactivar' : 'Seguimiento GPS inactivo - toca para activar'}
       >
-        {showMap ? <EyeOff size={16} /> : <Eye size={16} />}
+        {followUser ? <Locate size={16} /> : <LocateOff size={16} />}
         <span className="ml-1 text-xs">
-          {showMap ? 'Ocultar Mapa' : 'Mostrar Mapa'}
+          {followUser ? 'GPS Fijo' : 'Libre'}
         </span>
-      </Button>
-      <Button size="sm" className="bg-white text-blue-600 hover:bg-blue-50 shadow-lg">
-        <Navigation size={16} />
       </Button>
     </div>
   );

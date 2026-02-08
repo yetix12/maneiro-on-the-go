@@ -6,17 +6,61 @@ import GoogleMapComponent from '@/components/GoogleMapComponent';
 import RouteList from '@/components/RouteList';
 import VehicleTracker from '@/components/VehicleTracker';
 import RouteInfoSection from '@/components/RouteInfoSection';
+import GpsPermissionDialog from '@/components/GpsPermissionDialog';
+import OnboardingDialog from '@/components/OnboardingDialog';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
 interface IndexProps {
   onLogout?: () => void;
+  userId?: string;
 }
 
-const Index: React.FC<IndexProps> = ({ onLogout }) => {
+const ONBOARDING_STORAGE_KEY = 'transporte_maneiro_onboarding_seen';
+
+const Index: React.FC<IndexProps> = ({ onLogout, userId }) => {
   const [activeTab, setActiveTab] = useState('map');
   const [selectedRouteId, setSelectedRouteId] = useState<string | undefined>();
   const [selectedStopId, setSelectedStopId] = useState<string | undefined>();
-  const { location, error, isLoading } = useGeolocation();
+  const [showGpsDialog, setShowGpsDialog] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const { location, error, isLoading, requestPermission } = useGeolocation();
+
+  // Show GPS permission dialog on load if no location
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!location && !isLoading) {
+        setShowGpsDialog(true);
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [location, isLoading]);
+
+  // Show onboarding for first-time users
+  useEffect(() => {
+    const key = userId ? `${ONBOARDING_STORAGE_KEY}_${userId}` : ONBOARDING_STORAGE_KEY;
+    const seen = localStorage.getItem(key);
+    if (!seen) {
+      const timer = setTimeout(() => setShowOnboarding(true), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [userId]);
+
+  const handleGpsAccept = async () => {
+    setShowGpsDialog(false);
+    await requestPermission();
+  };
+
+  const handleGpsDecline = () => {
+    setShowGpsDialog(false);
+  };
+
+  const handleOnboardingClose = (dontShowAgain: boolean) => {
+    setShowOnboarding(false);
+    if (dontShowAgain) {
+      const key = userId ? `${ONBOARDING_STORAGE_KEY}_${userId}` : ONBOARDING_STORAGE_KEY;
+      localStorage.setItem(key, 'true');
+    }
+  };
 
   const handleStopClick = (routeId: string, stopId: string) => {
     setSelectedRouteId(routeId);
@@ -32,6 +76,19 @@ const Index: React.FC<IndexProps> = ({ onLogout }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-yellow-50">
+      {/* GPS Permission Dialog */}
+      <GpsPermissionDialog 
+        open={showGpsDialog} 
+        onAccept={handleGpsAccept} 
+        onDecline={handleGpsDecline} 
+      />
+
+      {/* Onboarding Dialog */}
+      <OnboardingDialog
+        open={showOnboarding}
+        onClose={handleOnboardingClose}
+      />
+
       {/* Header */}
       <div className="caribbean-gradient text-white p-4 shadow-lg">
         <div className="flex items-center justify-between">
