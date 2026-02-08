@@ -21,13 +21,13 @@ interface MapComponentProps {
 const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
-  const [showMap, setShowMap] = useState(true);
+  const [followUser, setFollowUser] = useState(true);
 
   const { mapRef } = useMapInitializer({
     userLocation,
     selectedRoute,
     onVehicleSelect: setSelectedVehicle,
-    showMap,
+    followUser,
   });
 
   const render = (status: Status) => {
@@ -42,7 +42,7 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
       case Status.FAILURE:
         return (
           <div className="flex items-center justify-center h-full">
-            <p className="text-red-500">Error al cargar el mapa</p>
+            <p className="text-destructive">Error al cargar el mapa</p>
           </div>
         );
       case Status.SUCCESS:
@@ -50,8 +50,8 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
           <div className="relative h-full">
             <div ref={mapRef} className="w-full h-full" />
             <MapControls 
-              showMap={showMap} 
-              onToggleMap={() => setShowMap(!showMap)} 
+              followUser={followUser} 
+              onToggleFollow={() => setFollowUser(!followUser)} 
             />
             <RouteSelector 
               selectedRoute={selectedRoute} 
