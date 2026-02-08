@@ -1,7 +1,7 @@
 
 /// <reference types="google.maps" />
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Wrapper, Status } from '@googlemaps/react-wrapper';
 import { Loader2 } from 'lucide-react';
 import MapControls from './map/MapControls';
@@ -18,10 +18,10 @@ interface MapComponentProps {
   userLocation: LocationData | null;
 }
 
-const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
+const MapInner: React.FC<MapComponentProps> = ({ userLocation }) => {
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
-  const [followUser, setFollowUser] = useState(true);
+  const [followUser, setFollowUser] = useState(false);
 
   const { mapRef } = useMapInitializer({
     userLocation,
@@ -30,6 +30,28 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
     followUser,
   });
 
+  return (
+    <div className="relative h-full w-full">
+      <div ref={mapRef} className="absolute inset-0" />
+      <div className="absolute inset-0 pointer-events-none z-[500]">
+        <div className="pointer-events-auto">
+          <MapControls
+            followUser={followUser}
+            onToggleFollow={() => setFollowUser(prev => !prev)}
+          />
+        </div>
+        <div className="pointer-events-auto">
+          <RouteSelector
+            selectedRoute={selectedRoute}
+            onRouteSelect={setSelectedRoute}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
   const render = (status: Status) => {
     switch (status) {
       case Status.LOADING:
@@ -46,25 +68,13 @@ const GoogleMapComponent: React.FC<MapComponentProps> = ({ userLocation }) => {
           </div>
         );
       case Status.SUCCESS:
-        return (
-          <div className="relative h-full">
-            <div ref={mapRef} className="w-full h-full" />
-            <MapControls 
-              followUser={followUser} 
-              onToggleFollow={() => setFollowUser(!followUser)} 
-            />
-            <RouteSelector 
-              selectedRoute={selectedRoute} 
-              onRouteSelect={setSelectedRoute} 
-            />
-          </div>
-        );
+        return <MapInner userLocation={userLocation} />;
     }
   };
 
   return (
-    <Wrapper 
-      apiKey="AIzaSyDGan9WbWLJW1guKw1T_uInSql4bZrGP9Y" 
+    <Wrapper
+      apiKey="AIzaSyDGan9WbWLJW1guKw1T_uInSql4bZrGP9Y"
       render={render}
     />
   );
