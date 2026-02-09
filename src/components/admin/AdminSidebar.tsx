@@ -10,7 +10,8 @@ import {
   BarChart3,
   Bus,
   Settings,
-  LogOut
+  LogOut,
+  PenTool
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +29,7 @@ const menuItems = [
   { id: 'routes', label: 'Rutas', icon: Map },
   { id: 'bus-stops', label: 'Paradas', icon: MapPin },
   { id: 'vehicles', label: 'Vehículos', icon: Bus },
+  { id: 'map-editor', label: 'Edición de Mapeo', icon: PenTool },
   { id: 'gallery', label: 'Galería', icon: Image },
   { id: 'statistics', label: 'Estadísticas', icon: BarChart3 },
 ];

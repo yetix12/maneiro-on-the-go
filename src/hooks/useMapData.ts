@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface WaypointData {
+  id: string;
+  lat: number;
+  lng: number;
+  waypoint_order: number;
+}
+
 export interface RouteData {
   id: string;
   name: string;
@@ -8,6 +15,7 @@ export interface RouteData {
   route_identification: string | null;
   description: string | null;
   stops: StopData[];
+  waypoints: WaypointData[];
 }
 
 export interface StopData {
@@ -36,30 +44,27 @@ export const useMapData = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      // Fetch routes
-      const { data: routesData, error: routesError } = await supabase
-        .from('bus_routes')
-        .select('*')
-        .eq('is_active', true);
+      // Fetch routes, stops, and waypoints in parallel
+      const [routesRes, stopsRes, waypointsRes, vehiclesRes] = await Promise.all([
+        supabase.from('bus_routes').select('*').eq('is_active', true),
+        supabase.from('bus_stops').select('*').order('stop_order'),
+        supabase.from('route_waypoints').select('*').order('waypoint_order'),
+        supabase.from('vehicles').select('*'),
+      ]);
 
-      if (routesError) throw routesError;
+      if (routesRes.error) throw routesRes.error;
+      if (stopsRes.error) throw stopsRes.error;
+      if (waypointsRes.error) throw waypointsRes.error;
+      if (vehiclesRes.error) throw vehiclesRes.error;
 
-      // Fetch stops for all routes
-      const { data: stopsData, error: stopsError } = await supabase
-        .from('bus_stops')
-        .select('*')
-        .order('stop_order');
-
-      if (stopsError) throw stopsError;
-
-      // Combine routes with their stops
-      const routesWithStops: RouteData[] = (routesData || []).map(route => ({
+      // Combine routes with their stops and waypoints
+      const routesWithStops: RouteData[] = (routesRes.data || []).map(route => ({
         id: route.id,
         name: route.name,
         color: route.color || '#3B82F6',
         route_identification: route.route_identification,
         description: route.description,
-        stops: (stopsData || [])
+        stops: (stopsRes.data || [])
           .filter(stop => stop.route_id === route.id)
           .map(stop => ({
             id: stop.id,
@@ -67,20 +72,21 @@ export const useMapData = () => {
             lat: stop.latitude,
             lng: stop.longitude,
             stop_order: stop.stop_order
+          })),
+        waypoints: (waypointsRes.data || [])
+          .filter(wp => wp.route_id === route.id)
+          .map(wp => ({
+            id: wp.id,
+            lat: wp.latitude,
+            lng: wp.longitude,
+            waypoint_order: wp.waypoint_order
           }))
       }));
 
       setRoutes(routesWithStops);
 
-      // Fetch vehicles
-      const { data: vehiclesData, error: vehiclesError } = await supabase
-        .from('vehicles')
-        .select('*');
-
-      if (vehiclesError) throw vehiclesError;
-
       // Fetch driver names for vehicles
-      const driverIds = (vehiclesData || []).map(v => v.driver_id).filter(Boolean);
+      const driverIds = (vehiclesRes.data || []).map(v => v.driver_id).filter(Boolean);
       let driversMap: Record<string, string> = {};
       
       if (driverIds.length > 0) {
@@ -95,7 +101,7 @@ export const useMapData = () => {
         }, {} as Record<string, string>);
       }
 
-      const formattedVehicles: VehicleData[] = (vehiclesData || []).map(v => ({
+      const formattedVehicles: VehicleData[] = (vehiclesRes.data || []).map(v => ({
         id: v.id,
         routeId: v.route_id,
         lat: v.current_latitude,
