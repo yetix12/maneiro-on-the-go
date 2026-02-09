@@ -431,6 +431,44 @@ export type Database = {
           },
         ]
       }
+      route_waypoints: {
+        Row: {
+          created_at: string | null
+          id: string
+          latitude: number
+          longitude: number
+          route_id: string
+          updated_at: string | null
+          waypoint_order: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          latitude: number
+          longitude: number
+          route_id: string
+          updated_at?: string | null
+          waypoint_order?: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          route_id?: string
+          updated_at?: string | null
+          waypoint_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_waypoints_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "bus_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null

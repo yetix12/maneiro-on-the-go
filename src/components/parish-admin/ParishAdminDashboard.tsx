@@ -7,6 +7,7 @@ import ParishVehiclesManager from './ParishVehiclesManager';
 import ParishRoutesManager from './ParishRoutesManager';
 import ParishStopsManager from './ParishStopsManager';
 import ParishStatistics from './ParishStatistics';
+import MapEditor from '../admin/MapEditor';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ParishAdminDashboardProps {
@@ -52,6 +53,8 @@ const ParishAdminDashboard: React.FC<ParishAdminDashboardProps> = ({ onLogout, p
         return <ParishStopsManager parroquiaId={parroquiaId} />;
       case 'statistics':
         return <ParishStatistics parroquiaId={parroquiaId} />;
+      case 'map-editor':
+        return <MapEditor />;
       default:
         return <ParishDashboardOverview parroquiaId={parroquiaId} parroquiaName={parroquiaName} />;
     }

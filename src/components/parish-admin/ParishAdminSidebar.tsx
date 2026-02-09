@@ -7,7 +7,8 @@ import {
   MapPin, 
   BarChart3,
   LogOut,
-  Car
+  Car,
+  PenTool
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +25,7 @@ const menuItems = [
   { id: 'vehicles', label: 'Vehículos', icon: Car },
   { id: 'routes', label: 'Rutas', icon: Map },
   { id: 'stops', label: 'Paradas', icon: MapPin },
+  { id: 'map-editor', label: 'Edición de Mapeo', icon: PenTool },
   { id: 'statistics', label: 'Estadísticas', icon: BarChart3 },
 ];
 

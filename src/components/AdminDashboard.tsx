@@ -5,6 +5,7 @@ import MunicipiosManager from './admin/MunicipiosManager';
 import AdminsManager from './admin/AdminsManager';
 import UsersManager from './admin/UsersManager';
 import StatisticsPanel from './admin/StatisticsPanel';
+import MapEditor from './admin/MapEditor';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -333,6 +334,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         return <UsersManager />;
       case 'statistics':
         return <StatisticsPanel />;
+      case 'map-editor':
+        return <MapEditor />;
       case 'routes':
         return (
           <div className="space-y-6">

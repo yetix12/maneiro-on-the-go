@@ -1,6 +1,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useMapData, RouteData, VehicleData } from '@/hooks/useMapData';
+import { useDirectionsService } from '@/hooks/useDirectionsService';
 import { getAdminPointsOfInterest } from './mapData';
 
 interface LocationData {
@@ -25,6 +26,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
   const lastPanRef = useRef<{ lat: number; lng: number } | null>(null);
 
   const { routes, vehicles, loading, refetch } = useMapData();
+  const { getDirectionsPath } = useDirectionsService();
 
   // Auto-refresh every 8 seconds
   useEffect(() => {
@@ -66,13 +68,13 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
     setIsMapInitialized(true);
   }, [isMapInitialized]);
 
-  const updateMapContent = useCallback((mapInstance: google.maps.Map, routesData: RouteData[], vehiclesData: VehicleData[]) => {
+  const updateMapContent = useCallback(async (mapInstance: google.maps.Map, routesData: RouteData[], vehiclesData: VehicleData[]) => {
     clearMapElements();
     const newMarkers: google.maps.Marker[] = [];
     const newPolylines: google.maps.Polyline[] = [];
 
     // Add routes from database
-    routesData.forEach((route) => {
+    for (const route of routesData) {
       const shouldShowRoute = selectedRoute === null || selectedRoute === route.id;
       
       if (shouldShowRoute && route.stops.length > 0) {
@@ -109,20 +111,37 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
           });
         });
 
-        // Add route polyline
+        // Add route polyline - use Directions API or waypoints
         if (route.stops.length > 1) {
-          const routePath = new google.maps.Polyline({
-            path: route.stops.map(stop => ({ lat: stop.lat, lng: stop.lng })),
-            geodesic: true,
-            strokeColor: route.color,
-            strokeOpacity: selectedRoute === null || selectedRoute === route.id ? 0.8 : 0.3,
-            strokeWeight: selectedRoute === route.id ? 4 : 2,
-          });
-          routePath.setMap(mapInstance);
-          newPolylines.push(routePath);
+          try {
+            const path = await getDirectionsPath(route.id, route.stops, route.waypoints);
+            
+            if (path.length > 0) {
+              const routePath = new google.maps.Polyline({
+                path: path,
+                geodesic: true,
+                strokeColor: route.color,
+                strokeOpacity: selectedRoute === null || selectedRoute === route.id ? 0.8 : 0.3,
+                strokeWeight: selectedRoute === route.id ? 4 : 2,
+              });
+              routePath.setMap(mapInstance);
+              newPolylines.push(routePath);
+            }
+          } catch (error) {
+            // Fallback to straight lines
+            const routePath = new google.maps.Polyline({
+              path: route.stops.map(stop => ({ lat: stop.lat, lng: stop.lng })),
+              geodesic: true,
+              strokeColor: route.color,
+              strokeOpacity: selectedRoute === null || selectedRoute === route.id ? 0.8 : 0.3,
+              strokeWeight: selectedRoute === route.id ? 4 : 2,
+            });
+            routePath.setMap(mapInstance);
+            newPolylines.push(routePath);
+          }
         }
       }
-    });
+    }
 
     // Add active vehicles from database
     vehiclesData.forEach((vehicle) => {
@@ -265,7 +284,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
 
     markersRef.current = newMarkers;
     polylinesRef.current = newPolylines;
-  }, [clearMapElements, selectedRoute, userLocation, followUser, onVehicleSelect]);
+  }, [clearMapElements, selectedRoute, userLocation, followUser, onVehicleSelect, getDirectionsPath]);
 
   useEffect(() => {
     if (mapRef.current && !isMapInitialized) {
