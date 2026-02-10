@@ -68,10 +68,50 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
     setIsMapInitialized(true);
   }, [isMapInitialized]);
 
+  // Snap a point to the nearest segment on a polyline path, returns snapped position + rotation
+  const snapToPolyline = useCallback((
+    vehicleLat: number, vehicleLng: number, 
+    path: google.maps.LatLng[]
+  ): { lat: number; lng: number; rotation: number } | null => {
+    if (path.length < 2) return null;
+
+    let bestDist = Infinity;
+    let bestPoint = { lat: vehicleLat, lng: vehicleLng };
+    let bestRotation = 0;
+    const SNAP_THRESHOLD = 0.002; // ~200m in degrees, max distance to snap
+
+    for (let i = 0; i < path.length - 1; i++) {
+      const aLat = path[i].lat(), aLng = path[i].lng();
+      const bLat = path[i + 1].lat(), bLng = path[i + 1].lng();
+
+      // Project point onto segment
+      const dx = bLng - aLng, dy = bLat - aLat;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq === 0) continue;
+
+      let t = ((vehicleLng - aLng) * dx + (vehicleLat - aLat) * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+
+      const projLat = aLat + t * dy;
+      const projLng = aLng + t * dx;
+      const dist = Math.sqrt(Math.pow(projLat - vehicleLat, 2) + Math.pow(projLng - vehicleLng, 2));
+
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestPoint = { lat: projLat, lng: projLng };
+        bestRotation = Math.atan2(dx, dy) * (180 / Math.PI);
+      }
+    }
+
+    if (bestDist > SNAP_THRESHOLD) return null;
+    return { ...bestPoint, rotation: bestRotation };
+  }, []);
+
   const updateMapContent = useCallback(async (mapInstance: google.maps.Map, routesData: RouteData[], vehiclesData: VehicleData[]) => {
     clearMapElements();
     const newMarkers: google.maps.Marker[] = [];
     const newPolylines: google.maps.Polyline[] = [];
+    const routePaths: Record<string, google.maps.LatLng[]> = {};
 
     // Add routes from database
     for (const route of routesData) {
@@ -117,6 +157,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
             const path = await getDirectionsPath(route.id, route.stops, route.waypoints);
             
             if (path.length > 0) {
+              routePaths[route.id] = path;
               const routePath = new google.maps.Polyline({
                 path: path,
                 geodesic: true,
@@ -151,8 +192,21 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
       if (shouldShowVehicle && vehicle.lat && vehicle.lng) {
         const routeColor = route?.color || '#3B82F6';
         
+        // Try to snap vehicle to its route polyline
+        let vehiclePos = { lat: vehicle.lat, lng: vehicle.lng };
         let rotation = 0;
-        if (route && route.stops.length > 1) {
+
+        const routePath = vehicle.routeId ? routePaths[vehicle.routeId] : null;
+        if (routePath && routePath.length >= 2) {
+          const snapped = snapToPolyline(vehicle.lat, vehicle.lng, routePath);
+          if (snapped) {
+            vehiclePos = { lat: snapped.lat, lng: snapped.lng };
+            rotation = snapped.rotation;
+          }
+        }
+
+        // Fallback rotation from stops if no snap
+        if (rotation === 0 && route && route.stops.length > 1) {
           let minDist = Infinity;
           let nearestIdx = 0;
           route.stops.forEach((stop, idx) => {
@@ -164,7 +218,6 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
               nearestIdx = idx;
             }
           });
-          
           const nextIdx = Math.min(nearestIdx + 1, route.stops.length - 1);
           if (nextIdx !== nearestIdx) {
             const dx = route.stops[nextIdx].lng - vehicle.lng!;
@@ -188,7 +241,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
         `;
 
         const marker = new google.maps.Marker({
-          position: { lat: vehicle.lat, lng: vehicle.lng },
+          position: vehiclePos,
           map: mapInstance,
           title: `Vehículo ${vehicle.license_plate}`,
           icon: {
@@ -284,7 +337,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
 
     markersRef.current = newMarkers;
     polylinesRef.current = newPolylines;
-  }, [clearMapElements, selectedRoute, userLocation, followUser, onVehicleSelect, getDirectionsPath]);
+  }, [clearMapElements, snapToPolyline, selectedRoute, userLocation, followUser, onVehicleSelect, getDirectionsPath]);
 
   useEffect(() => {
     if (mapRef.current && !isMapInitialized) {
