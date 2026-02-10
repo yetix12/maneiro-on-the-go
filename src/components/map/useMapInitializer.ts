@@ -108,8 +108,8 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
     return { ...bestPoint, rotation: bestRotation };
   }, []);
 
-  // Smoothly animate a marker from one position to another
-  const animateMarker = useCallback((
+  // Smoothly animate a marker from one position to another (plain function, no hook needed)
+  const animateMarkerFn = (
     marker: google.maps.Marker,
     from: google.maps.LatLng,
     to: google.maps.LatLng,
@@ -118,7 +118,6 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
     const startLat = from.lat(), startLng = from.lng();
     const endLat = to.lat(), endLng = to.lng();
     
-    // Skip animation if positions are the same
     if (Math.abs(startLat - endLat) < 0.000001 && Math.abs(startLng - endLng) < 0.000001) return;
 
     const startTime = performance.now();
@@ -126,7 +125,6 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
     const step = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease-out cubic for smooth deceleration
       const eased = 1 - Math.pow(1 - progress, 3);
       
       const lat = startLat + (endLat - startLat) * eased;
@@ -139,7 +137,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
     };
     
     requestAnimationFrame(step);
-  }, []);
+  };
 
   const updateMapContent = useCallback(async (mapInstance: google.maps.Map, routesData: RouteData[], vehiclesData: VehicleData[]) => {
     clearMapElements();
@@ -289,7 +287,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
         if (existingMarker) {
           // Animate smoothly to new position
           existingMarker.setIcon(iconData);
-          animateMarker(existingMarker, existingMarker.getPosition()!, new google.maps.LatLng(vehiclePos.lat, vehiclePos.lng), 1000);
+          animateMarkerFn(existingMarker, existingMarker.getPosition()!, new google.maps.LatLng(vehiclePos.lat, vehiclePos.lng), 1000);
           newMarkers.push(existingMarker);
         } else {
           const marker = new google.maps.Marker({
@@ -396,7 +394,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
 
     markersRef.current = newMarkers;
     polylinesRef.current = newPolylines;
-  }, [clearMapElements, snapToPolyline, animateMarker, selectedRoute, userLocation, followUser, onVehicleSelect, getDirectionsPath]);
+  }, [clearMapElements, snapToPolyline, selectedRoute, userLocation, followUser, onVehicleSelect, getDirectionsPath]);
 
   useEffect(() => {
     if (mapRef.current && !isMapInitialized) {
