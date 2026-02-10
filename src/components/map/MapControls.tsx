@@ -10,7 +10,7 @@ interface MapControlsProps {
 
 const MapControls: React.FC<MapControlsProps> = ({ followUser, onToggleFollow }) => {
   return (
-    <div className="absolute top-4 right-4 space-y-2">
+    <div className="absolute top-4 right-4 z-[600] space-y-2">
       <Button 
         size="sm" 
         className={`shadow-lg ${
