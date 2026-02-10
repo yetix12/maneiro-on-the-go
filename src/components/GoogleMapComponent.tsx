@@ -34,18 +34,18 @@ const MapInner: React.FC<MapComponentProps> = ({ userLocation }) => {
     <div className="relative h-full w-full">
       <div ref={mapRef} className="absolute inset-0" />
       <div className="absolute inset-0 pointer-events-none z-[500]">
-        <div className="pointer-events-auto">
-          <MapControls
-            followUser={followUser}
-            onToggleFollow={() => setFollowUser(prev => !prev)}
-          />
-        </div>
-        <div className="pointer-events-auto">
-          <RouteSelector
-            selectedRoute={selectedRoute}
-            onRouteSelect={setSelectedRoute}
-          />
-        </div>
+      <div className="absolute top-0 right-0 z-[600] pointer-events-auto">
+        <MapControls
+          followUser={followUser}
+          onToggleFollow={() => setFollowUser(prev => !prev)}
+        />
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 pointer-events-auto">
+        <RouteSelector
+          selectedRoute={selectedRoute}
+          onRouteSelect={setSelectedRoute}
+        />
+      </div>
       </div>
     </div>
   );

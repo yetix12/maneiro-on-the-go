@@ -9,6 +9,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signInWithGoogle: () => Promise<{ error: any }>;
   signUp: (email: string, password: string, userData: { 
     username: string; 
     full_name: string; 
@@ -216,11 +217,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const signInWithGoogle = async () => {
+    const { error } = await authService.signInWithGoogle();
+    if (error) {
+      console.error('Google sign in error:', error);
+      toast.error('Error al iniciar sesión con Google');
+    }
+    return { error };
+  };
+
   const value: AuthContextType = {
     user,
     session,
     loading,
     signIn,
+    signInWithGoogle,
     signUp,
     signOut
   };
