@@ -23,6 +23,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
   const [isMapInitialized, setIsMapInitialized] = useState(false);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const polylinesRef = useRef<google.maps.Polyline[]>([]);
+  const vehicleMarkersRef = useRef<Map<string, google.maps.Marker>>(new Map());
   const lastPanRef = useRef<{ lat: number; lng: number } | null>(null);
 
   const { routes, vehicles, loading, refetch } = useMapData();
@@ -78,7 +79,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
     let bestDist = Infinity;
     let bestPoint = { lat: vehicleLat, lng: vehicleLng };
     let bestRotation = 0;
-    const SNAP_THRESHOLD = 0.002; // ~200m in degrees, max distance to snap
+    const SNAP_THRESHOLD = 0.005; // ~500m in degrees, generous snap range
 
     for (let i = 0; i < path.length - 1; i++) {
       const aLat = path[i].lat(), aLng = path[i].lng();
@@ -105,6 +106,39 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
 
     if (bestDist > SNAP_THRESHOLD) return null;
     return { ...bestPoint, rotation: bestRotation };
+  }, []);
+
+  // Smoothly animate a marker from one position to another
+  const animateMarker = useCallback((
+    marker: google.maps.Marker,
+    from: google.maps.LatLng,
+    to: google.maps.LatLng,
+    duration: number
+  ) => {
+    const startLat = from.lat(), startLng = from.lng();
+    const endLat = to.lat(), endLng = to.lng();
+    
+    // Skip animation if positions are the same
+    if (Math.abs(startLat - endLat) < 0.000001 && Math.abs(startLng - endLng) < 0.000001) return;
+
+    const startTime = performance.now();
+    
+    const step = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out cubic for smooth deceleration
+      const eased = 1 - Math.pow(1 - progress, 3);
+      
+      const lat = startLat + (endLat - startLat) * eased;
+      const lng = startLng + (endLng - startLng) * eased;
+      marker.setPosition(new google.maps.LatLng(lat, lng));
+      
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    
+    requestAnimationFrame(step);
   }, []);
 
   const updateMapContent = useCallback(async (mapInstance: google.maps.Map, routesData: RouteData[], vehiclesData: VehicleData[]) => {
@@ -184,12 +218,16 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
       }
     }
 
+    // Track which vehicle IDs are still active
+    const activeVehicleIds = new Set<string>();
+
     // Add active vehicles from database
     vehiclesData.forEach((vehicle) => {
       const route = routesData.find(r => r.id === vehicle.routeId);
       const shouldShowVehicle = selectedRoute === null || selectedRoute === vehicle.routeId;
       
       if (shouldShowVehicle && vehicle.lat && vehicle.lng) {
+        activeVehicleIds.add(vehicle.id);
         const routeColor = route?.color || '#3B82F6';
         
         // Try to snap vehicle to its route polyline
@@ -240,34 +278,55 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
           </svg>
         `;
 
-        const marker = new google.maps.Marker({
-          position: vehiclePos,
-          map: mapInstance,
-          title: `Vehículo ${vehicle.license_plate}`,
-          icon: {
-            url: 'data:image/svg+xml;base64,' + btoa(busSvg),
-            scaledSize: new google.maps.Size(44, 56),
-            anchor: new google.maps.Point(22, 28),
-          },
-        });
-        newMarkers.push(marker);
+        const iconData = {
+          url: 'data:image/svg+xml;base64,' + btoa(busSvg),
+          scaledSize: new google.maps.Size(44, 56),
+          anchor: new google.maps.Point(22, 28),
+        };
 
-        const infoWindow = new google.maps.InfoWindow({
-          content: `
-            <div style="padding: 8px;">
-              <h3 style="margin: 0; color: ${routeColor};">${vehicle.license_plate}</h3>
-              <p style="margin: 4px 0; font-size: 12px;"><strong>Modelo:</strong> ${vehicle.model || 'N/A'}</p>
-              <p style="margin: 4px 0; font-size: 12px;"><strong>Conductor:</strong> ${vehicle.driver || 'Sin asignar'}</p>
-              <p style="margin: 4px 0; font-size: 12px;"><strong>Estado:</strong> ${vehicle.status}</p>
-              <p style="margin: 4px 0; font-size: 12px;"><strong>Ruta:</strong> ${route?.name || 'Sin ruta'}</p>
-            </div>
-          `,
-        });
+        // Check if marker already exists for smooth animation
+        const existingMarker = vehicleMarkersRef.current.get(vehicle.id);
+        if (existingMarker) {
+          // Animate smoothly to new position
+          existingMarker.setIcon(iconData);
+          animateMarker(existingMarker, existingMarker.getPosition()!, new google.maps.LatLng(vehiclePos.lat, vehiclePos.lng), 1000);
+          newMarkers.push(existingMarker);
+        } else {
+          const marker = new google.maps.Marker({
+            position: vehiclePos,
+            map: mapInstance,
+            title: `Vehículo ${vehicle.license_plate}`,
+            icon: iconData,
+          });
+          
+          vehicleMarkersRef.current.set(vehicle.id, marker);
+          newMarkers.push(marker);
 
-        marker.addListener('click', () => {
-          onVehicleSelect(vehicle);
-          infoWindow.open(mapInstance, marker);
-        });
+          const infoWindow = new google.maps.InfoWindow({
+            content: `
+              <div style="padding: 8px;">
+                <h3 style="margin: 0; color: ${routeColor};">${vehicle.license_plate}</h3>
+                <p style="margin: 4px 0; font-size: 12px;"><strong>Modelo:</strong> ${vehicle.model || 'N/A'}</p>
+                <p style="margin: 4px 0; font-size: 12px;"><strong>Conductor:</strong> ${vehicle.driver || 'Sin asignar'}</p>
+                <p style="margin: 4px 0; font-size: 12px;"><strong>Estado:</strong> ${vehicle.status}</p>
+                <p style="margin: 4px 0; font-size: 12px;"><strong>Ruta:</strong> ${route?.name || 'Sin ruta'}</p>
+              </div>
+            `,
+          });
+
+          marker.addListener('click', () => {
+            onVehicleSelect(vehicle);
+            infoWindow.open(mapInstance, marker);
+          });
+        }
+      }
+    });
+
+    // Remove vehicle markers that are no longer active
+    vehicleMarkersRef.current.forEach((marker, vehicleId) => {
+      if (!activeVehicleIds.has(vehicleId)) {
+        marker.setMap(null);
+        vehicleMarkersRef.current.delete(vehicleId);
       }
     });
 
@@ -337,7 +396,7 @@ export const useMapInitializer = ({ userLocation, selectedRoute, onVehicleSelect
 
     markersRef.current = newMarkers;
     polylinesRef.current = newPolylines;
-  }, [clearMapElements, snapToPolyline, selectedRoute, userLocation, followUser, onVehicleSelect, getDirectionsPath]);
+  }, [clearMapElements, snapToPolyline, animateMarker, selectedRoute, userLocation, followUser, onVehicleSelect, getDirectionsPath]);
 
   useEffect(() => {
     if (mapRef.current && !isMapInitialized) {
